@@ -1322,6 +1322,11 @@
                     }
                     
                     if (!response.ok) {
+                        if (response.status === 503) {
+                            // Server is still initializing
+                            const errorData = await response.json();
+                            throw new Error(`🔄 System is still initializing AI services. Please wait ${errorData.retry_after || 10} seconds and try again.`);
+                        }
                         throw new Error(`Error: ${response.status}`);
                     }
                     
@@ -1410,7 +1415,73 @@
             
             // Focus on input field when page loads
             userInput.focus();
+            
+            // Check system status on page load
+            checkSystemStatus();
         });
+
+        // Function to check if the system is ready
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/ready');
+                const data = await response.json();
+                
+                if (data.status === 'fully_ready') {
+                    console.log('✅ System is fully ready!');
+                    showSystemStatus('✅ System Ready - You can ask questions!', 'success');
+                } else if (data.status === 'initializing') {
+                    console.log('🔄 System initializing...');
+                    showSystemStatus('🔄 AI services are still loading. Please wait...', 'warning');
+                    // Check again in 10 seconds
+                    setTimeout(checkSystemStatus, 10000);
+                }
+            } catch (error) {
+                console.log('⚠️ Could not check system status');
+                showSystemStatus('⚠️ Checking system status...', 'info');
+                // Retry in 5 seconds
+                setTimeout(checkSystemStatus, 5000);
+            }
+        }
+
+        // Function to show system status
+        function showSystemStatus(message, type) {
+            // Remove existing status if any
+            const existingStatus = document.querySelector('.system-status');
+            if (existingStatus) {
+                existingStatus.remove();
+            }
+
+            // Create status element
+            const statusElement = document.createElement('div');
+            statusElement.className = `system-status ${type}`;
+            statusElement.innerHTML = message;
+            statusElement.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: bold;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                background: ${type === 'success' ? '#22c55e' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+                color: white;
+                font-size: 14px;
+                transition: all 0.3s ease;
+            `;
+
+            document.body.appendChild(statusElement);
+
+            // Auto-remove success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    if (statusElement && statusElement.parentNode) {
+                        statusElement.style.opacity = '0';
+                        setTimeout(() => statusElement.remove(), 300);
+                    }
+                }, 5000);
+            }
+        }
 
         // Update the askQuestion function to use streaming
         function askQuestion(question, useStreaming = false) {
