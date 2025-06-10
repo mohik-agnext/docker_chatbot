@@ -324,20 +324,20 @@ def search():
         
         # 1. ENHANCED HYBRID SEARCH (get more context for better responses)
         search_start = time.time()
-        search_results = fast_searcher.fast_search(query, top_k=6)  # More context
+        search_results = fast_searcher.fast_search(query, top_k=3)  # Reduced for speed
         search_time = time.time() - search_start
         
         print(f"🔍 Search completed in {search_time:.2f}s with {len(search_results)} results")
         
         # 2. ENHANCED CONTEXT PREPARATION
         context_parts = []
-        for i, result in enumerate(search_results[:4]):  # Top 4 results for comprehensive answers
+        for i, result in enumerate(search_results[:2]):  # Top 2 results for speed
             text = result.get('metadata', {}).get('content') or result.get('metadata', {}).get('text', '')
             if text:
                 namespace = result.get('namespace', 'unknown')
                 score = result.get('score', 0)
-                # Longer excerpts for better context
-                excerpt = text[:800] + ("..." if len(text) > 800 else "")
+                # Shorter excerpts for faster processing
+                excerpt = text[:400] + ("..." if len(text) > 400 else "")
                 context_parts.append(f"**[Source {i+1} - {namespace}]** (Relevance: {score:.3f})\n{excerpt}")
         
         context = "\n\n".join(context_parts)
@@ -352,7 +352,7 @@ def search():
                 model="llama3-70b-8192",
                 messages=[{"role": "user", "content": optimized_prompt}],
                 temperature=0.4,  # Balanced for accuracy and human-friendly expressiveness
-                max_tokens=800,   # Increased for comprehensive responses
+                max_tokens=400,   # Reduced for faster responses
                 top_p=0.9,
                 stream=False
             )
@@ -369,12 +369,12 @@ def search():
         print(f"🤖 Enhanced LLM response in {llm_time:.2f}s")
         print(f"⚡ TOTAL RESPONSE TIME: {total_time:.2f}s")
         
-        # Performance assessment (adjusted for comprehensive responses)
-        if total_time <= 4:
+        # Performance assessment (adjusted for optimized responses)
+        if total_time <= 2:
             performance = "🟢 EXCELLENT"
-        elif total_time <= 6:
+        elif total_time <= 4:
             performance = "🟡 GOOD" 
-        elif total_time <= 10:
+        elif total_time <= 8:
             performance = "🟠 ACCEPTABLE"
         else:
             performance = "🔴 SLOW"
@@ -395,7 +395,7 @@ def search():
                     'namespace': result.get('namespace', ''),
                     'sources': result.get('sources', [])
                 }
-                for result in search_results[:4]
+                for result in search_results[:2]  # Match context preparation
             ],
             'performance': {
                 'total_time': f"{total_time:.2f}s",

@@ -96,9 +96,11 @@ class PerformanceOptimizedHybridSearch:
         load_time = time.time() - start_time
         print(f"✅ Model loaded in {load_time:.2f}s (dimension: {self.embedding_dimension_actual})")
         
-        # Initialize embedding cache
+        # Enhanced caching for cloud deployment
         self.query_embedding_cache = {}
-        self.max_cache_size = 1000  # Increased cache size
+        self.max_cache_size = 100  # Increased cache size
+        self.query_cache = {}  # Full result caching
+        self.max_query_cache_size = 50
     
     def _initialize_bm25_cached(self):
         """MAJOR OPTIMIZATION: Use cached BM25 index instead of rebuilding."""
@@ -231,11 +233,18 @@ class PerformanceOptimizedHybridSearch:
         return tokenized_docs
     
     def fast_search(self, query: str, top_k: int = 5):
-        """
-        Ultra-fast search optimized for production use.
-        Target: <3 seconds response time
-        """
+        """Fast hybrid search with intelligent caching and optimized performance."""
         start_time = time.time()
+        
+        # Check query cache first
+        query_key = f"{query.lower().strip()}_{top_k}"
+        if query_key in self.query_cache:
+            cached_result = self.query_cache[query_key]
+            self.performance_stats["cache_hits"] += 1
+            self.performance_stats["queries_processed"] += 1
+            print(f"⚡ Cache hit! Returned in {time.time() - start_time:.3f}s")
+            return cached_result
+        
         self.performance_stats["queries_processed"] += 1
         
         print(f"\n⚡ FAST SEARCH: '{query}' (target: <3s)")
@@ -252,15 +261,22 @@ class PerformanceOptimizedHybridSearch:
         # 4. QUICK FUSION (0.01-0.1s)
         final_results = self._fast_fusion(vector_results, bm25_results, top_k)
         
-        # Performance tracking
+        # Update performance stats
         total_time = time.time() - start_time
         self.performance_stats["avg_response_time"] = (
-            (self.performance_stats["avg_response_time"] * (self.performance_stats["queries_processed"] - 1) + total_time) 
+            (self.performance_stats["avg_response_time"] * (self.performance_stats["queries_processed"] - 1) + total_time)
             / self.performance_stats["queries_processed"]
         )
         
-        print(f"⚡ TOTAL TIME: {total_time:.2f}s")
-        print(f"📊 Avg response time: {self.performance_stats['avg_response_time']:.2f}s")
+        print(f"⚡ Fast search completed in {total_time:.3f}s")
+        
+        # Cache the results for future queries
+        if len(self.query_cache) >= self.max_query_cache_size:
+            # Remove oldest entry
+            oldest_key = next(iter(self.query_cache))
+            del self.query_cache[oldest_key]
+        
+        self.query_cache[query_key] = final_results
         
         return final_results
     
@@ -294,9 +310,9 @@ class PerformanceOptimizedHybridSearch:
     
     def _fast_semantic_search(self, query: str, query_embedding, top_k: int):
         """Fast semantic search with intelligent namespace targeting."""
-        # Get 2-3 most relevant namespaces only
+        # Get 1-2 most relevant namespaces only for speed
         relevant_semantic_namespaces = semantic_mapper.get_relevant_semantic_namespaces(
-            query, min_namespaces=2, max_namespaces=3  # Reduced for speed
+            query, min_namespaces=1, max_namespaces=2  # Reduced for faster responses
         )
         
         target_namespaces = semantic_mapper.translate_namespaces(
@@ -306,8 +322,8 @@ class PerformanceOptimizedHybridSearch:
         available_namespaces = [ns for ns in target_namespaces if ns in self.namespaces]
         
         if not available_namespaces:
-            # Emergency fallback - use first 2 namespaces
-            available_namespaces = self.namespaces[:2]
+            # Emergency fallback - use first namespace only
+            available_namespaces = self.namespaces[:1]
         
         print(f"🎯 Searching {len(available_namespaces)} targeted namespaces")
         
