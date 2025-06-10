@@ -1,0 +1,55 @@
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Documentation (not needed in production)
+*.md
+docs/
+DOCKER_DEPLOYMENT_GUIDE.md
+DEPLOYMENT_READY.md
+HF_DEPLOYMENT_INSTRUCTIONS.md
+
+# Development files
+.env
+.env.local
+.env.example
+env_template.txt
+
+# Python cache and temp files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Docker files (not needed inside container)
+docker-compose.yml
+docker-deploy.sh
+
+# Deployment scripts
+validate_deployment.py
+start.py
+
+# Large unnecessary files
+*.log
+*.tmp 
