@@ -14,22 +14,31 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean
 
 WORKDIR /app
-COPY requirements-minimal.txt .
+COPY requirements.txt .
 
 # Create optimized virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install dependencies with maximum optimization
+# Install dependencies with maximum optimization and cleanup
 RUN pip install --upgrade pip --no-cache-dir && \
     pip uninstall -y pinecone-client || true && \
-    pip install --no-cache-dir -r requirements-minimal.txt && \
+    pip install --no-cache-dir -r requirements.txt && \
     pip cache purge && \
+    # Aggressive Python cleanup for size reduction
+    find /opt/venv -type d -name "tests" -exec rm -rf {} + || true && \
+    find /opt/venv -type d -name "test" -exec rm -rf {} + || true && \
     find /opt/venv -name "*.pyc" -delete && \
-    find /opt/venv -name "__pycache__" -type d -exec rm -rf {} + || true && \
     find /opt/venv -name "*.pyo" -delete && \
-    find /opt/venv -name "tests" -type d -exec rm -rf {} + || true && \
-    find /opt/venv -name "test" -type d -exec rm -rf {} + || true
+    find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + || true && \
+    find /opt/venv -name "*.dist-info" -type d -exec rm -rf {} + || true && \
+    find /opt/venv -name "*.egg-info" -type d -exec rm -rf {} + || true && \
+    # Remove documentation and examples to save space
+    find /opt/venv -type d -name "docs" -exec rm -rf {} + || true && \
+    find /opt/venv -type d -name "examples" -exec rm -rf {} + || true && \
+    find /opt/venv -name "*.md" -delete || true && \
+    find /opt/venv -name "LICENSE*" -delete || true && \
+    find /opt/venv -name "README*" -delete || true
 
 # Download only essential NLTK data
 RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)"
@@ -56,6 +65,10 @@ RUN useradd -m -u 1000 railwayuser
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
+# Final cleanup in runtime stage
+RUN find /opt/venv -name "*.pyc" -delete && \
+    find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + || true
 
 WORKDIR /app
 
