@@ -1299,8 +1299,8 @@
                     // Add loading message
                     const loadingDiv = showLoading();
                     
-                    console.log('🚀 SENDQUERY DEBUG: Making fetch request to localhost:3003/api/search');
-                    const response = await fetch('http://localhost:3003/api/search', {
+                    console.log('🚀 SENDQUERY DEBUG: Making fetch request to /api/search');
+                    const response = await fetch('/api/search', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1525,7 +1525,7 @@
             }
             
             // Send the request as JSON through POST with proper streaming handling
-                            fetch('http://localhost:3003/api/search/stream', {
+                            fetch('/api/search/stream', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1586,7 +1586,7 @@
         function fetchQuestion(question, sessionId) {
             console.log('🔍 FETCH DEBUG: Starting fetchQuestion with:', { question, sessionId });
             
-            fetch('http://localhost:3003/api/search', {
+                            fetch('/api/search', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
