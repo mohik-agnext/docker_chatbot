@@ -1,0 +1,12 @@
+# Ultra-minimal requirements for Railway deployment (<4GB)
+flask==2.3.3
+flask-cors==4.0.0
+sentence-transformers==2.2.2
+pinecone[grpc]==4.1.0
+groq==0.4.1
+numpy==1.24.4
+scikit-learn==1.3.2
+rank-bm25==0.2.2
+nltk==3.8.1
+python-dotenv==1.0.0
+requests==2.31.0 

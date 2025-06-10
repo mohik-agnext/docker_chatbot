@@ -53,6 +53,7 @@ EMBEDDING_MODELS = {
     },
     "huggingface": {
         "BAAI/bge-large-en-v1.5": 1024,
+        "all-MiniLM-L6-v2": 384,
     }
 }
 

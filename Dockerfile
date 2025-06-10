@@ -1,83 +1,93 @@
-# Chandigarh Policy Assistant - Optimized for Railway Deployment
-# Multi-stage build to reduce final image size from 6.5GB to ~3.5GB
+# Chandigarh Policy Assistant - Ultra-Optimized for Railway (<4GB)
+# Aggressive multi-stage build with minimal AI models
 
 # ================================
 # Stage 1: Builder (temporary stage)
 # ================================
 FROM python:3.11-slim as builder
 
-# Install build dependencies (will be discarded)
+# Install minimal build dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory for build
-WORKDIR /app
-
-# Copy requirements and install with cache
-COPY requirements.txt .
-
-# Create virtual environment and install dependencies
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Install Python dependencies with optimizations
-RUN pip install --upgrade pip && \
-    pip uninstall -y pinecone-client || true && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Download NLTK data (minimal required datasets only)
-RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')" --quiet
-
-# ================================
-# Stage 2: Production (final stage)
-# ================================
-FROM python:3.11-slim
-
-# Install only runtime dependencies (no build tools)
-RUN apt-get update && apt-get install -y \
-    curl \
+    gcc \
+    g++ \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Create application user for security
+WORKDIR /app
+COPY requirements-minimal.txt .
+
+# Create optimized virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install dependencies with maximum optimization
+RUN pip install --upgrade pip --no-cache-dir && \
+    pip uninstall -y pinecone-client || true && \
+    pip install --no-cache-dir -r requirements-minimal.txt && \
+    pip cache purge && \
+    find /opt/venv -name "*.pyc" -delete && \
+    find /opt/venv -name "__pycache__" -type d -exec rm -rf {} + || true && \
+    find /opt/venv -name "*.pyo" -delete && \
+    find /opt/venv -name "tests" -type d -exec rm -rf {} + || true && \
+    find /opt/venv -name "test" -type d -exec rm -rf {} + || true
+
+# Download only essential NLTK data
+RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)"
+
+# ================================  
+# Stage 2: Ultra-minimal runtime
+# ================================
+FROM python:3.11-slim
+
+# Install only curl and clean aggressively
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && apt-get autoremove -y \
+    && rm -rf /usr/share/doc/* \
+    && rm -rf /usr/share/man/* \
+    && rm -rf /var/cache/apt/* \
+    && rm -rf /tmp/*
+
+# Create user
 RUN useradd -m -u 1000 railwayuser
 
-# Copy virtual environment from builder stage
+# Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Set working directory
 WORKDIR /app
 
-# Copy application files with proper ownership
-COPY --chown=railwayuser:railwayuser . /app
+# Copy only essential application files
+COPY --chown=railwayuser:railwayuser fast_hybrid_search_server.py .
+COPY --chown=railwayuser:railwayuser performance_fix_hybrid_search.py .
+COPY --chown=railwayuser:railwayuser semantic_namespace_mapper.py .
+COPY --chown=railwayuser:railwayuser config.py .
+COPY --chown=railwayuser:railwayuser hybrid_search_frontend.html .
+COPY --chown=railwayuser:railwayuser index.html .
+COPY --chown=railwayuser:railwayuser cache/ ./cache/
+COPY --chown=railwayuser:railwayuser txt_files/ ./txt_files/
 
-# Create cache directories with proper permissions
-RUN mkdir -p cache /tmp/cache && \
-    chown -R railwayuser:railwayuser cache /tmp/cache && \
-    chmod 755 cache && \
+# Create cache directories
+RUN mkdir -p /tmp/cache && \
+    chown -R railwayuser:railwayuser . /tmp/cache && \
+    chmod -R 755 . && \
     chmod 777 /tmp/cache
 
-# Fix permissions for existing cache files
-RUN find cache -type f -exec chmod 644 {} \; 2>/dev/null || true
-
-# Switch to non-root user
 USER railwayuser
 
-# Railway-specific environment variables
+# Railway environment variables
 ENV FLASK_ENV=production \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000
+    PORT=8000 \
+    EMBEDDING_MODEL=all-MiniLM-L6-v2
 
-# Expose port for Railway (Railway uses PORT env variable)
 EXPOSE $PORT
 
-# Health check optimized for Railway
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+# Minimal health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=2 \
     CMD curl -f http://localhost:$PORT/health || exit 1
 
-# Default command for Railway deployment
 CMD ["python", "fast_hybrid_search_server.py"] 
