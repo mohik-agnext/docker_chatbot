@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cii Chat - Hybrid Search</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-light: #eef2ff;
+            --secondary-color: #3730a3;
+            --accent-color: #f59e0b;
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+            --text-muted: #94a3b8;
+            --bg-color: #f8fafc;
+            --white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 1rem;
+            --transition: all 0.2s ease;
+            --success-color: #10b981;
+            --success-rgb: 16, 185, 129;
+            --citation-color: #4f46e5;
+            --formal-heading-color: #2563eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+        
+        header {
+            background-color: var(--white);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            z-index: 10;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+        }
+        
+        h1::before {
+            content: "";
+            display: block;
+            width: 2rem;
+            height: 2rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border-radius: 50%;
+            opacity: 0.8;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .session-info {
+            font-size: 0.825rem;
+            color: var(--text-muted);
+            background-color: var(--gray-100);
+            padding: 0.35rem 0.75rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-200);
+            transition: var(--transition);
+        }
+        
+        .session-info:hover {
+            border-color: var(--gray-300);
+            background-color: var(--gray-50);
+        }
+        
+        .new-chat-btn {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 0.875rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 5px rgba(79, 70, 229, 0.3);
+        }
+        
+        .new-chat-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(79, 70, 229, 0.4);
+        }
+        
+        .new-chat-btn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .new-chat-btn::before {
+            content: "+";
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(var(--gray-200) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .welcome-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -60%);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            z-index: 1;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            opacity: 1;
+            background-color: var(--white);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .welcome-message.hidden {
+            opacity: 0;
+            transform: translate(-50%, -65%);
+            pointer-events: none;
+        }
+        
+        .welcome-message h2 {
+            color: var(--primary-color);
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .welcome-message p {
+            color: var(--text-light);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .welcome-message .suggestions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+        
+        .suggestion-btn {
+            background-color: var(--white);
+            color: var(--text-dark);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.875rem;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .suggestion-btn:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .suggestion-btn::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+        
+        .suggestion-btn:hover::after {
+            transform: scaleX(1);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            scroll-behavior: smooth;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+        
+        .message {
+            max-width: 80%;
+            animation: fadeIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .user-message {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: var(--white);
+            padding: 0.875rem 1.25rem;
+            border-radius: var(--radius-lg) 0 var(--radius-lg) var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            word-break: break-word;
+            font-weight: 400;
+            position: relative;
+        }
+        
+        .bot-message {
+            align-self: flex-start;
+            background-color: var(--white);
+            padding: 0.5rem;
+            border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+            position: relative;
+        }
+        
+        .user-message::before,
+        .bot-message::before {
+            content: "";
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            top: 0;
+        }
+        
+        .user-message::before {
+            right: -6px;
+            border-radius: 0 0 0 12px;
+            box-shadow: -2px -2px 0 0 var(--secondary-color);
+        }
+        
+        .bot-message::before {
+            left: -6px;
+            border-radius: 0 0 12px 0;
+            box-shadow: 2px -2px 0 0 var(--white);
+        }
+        
+        .timestamp {
+            position: absolute;
+            bottom: -1.25rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            opacity: 0.8;
+        }
+        
+        .user-message .timestamp {
+            right: 0.25rem;
+        }
+        
+        .bot-message .timestamp {
+            left: 0.25rem;
+        }
+        
+        .input-container {
+            background-color: var(--white);
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+            position: relative;
+            z-index: 10;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .input-container .input-wrapper {
+            position: relative;
+            flex: 1;
+        }
+        
+        .input-container input {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 100px;
+            outline: none;
+            font-size: 0.95rem;
+            background-color: var(--white);
+            color: var(--text-dark);
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .input-container input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        
+        .input-container input::placeholder {
+            color: var(--gray-400);
+        }
+        
+        .input-container button {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            flex-shrink: 0;
+            box-shadow: 0 2px 5px rgba(79, 70, 229, 0.3);
+        }
+        
+        .input-container button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 8px rgba(79, 70, 229, 0.4);
+        }
+        
+        .input-container button:active {
+            transform: translateY(0) scale(1);
+        }
+        
+        .send-icon {
+            width: 20px;
+            height: 20px;
+            stroke: var(--white);
+            stroke-width: 2px;
+            transition: var(--transition);
+        }
+        
+        .input-container button:hover .send-icon {
+            transform: translateX(2px);
+        }
+        
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+            font-size: 0.825rem;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--gray-300);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .result-table th, .result-table td {
+            border: 1px solid var(--gray-300);
+            padding: 0.75rem 0.75rem;
+            text-align: left;
+        }
+        
+        .result-table th {
+            background-color: var(--gray-100);
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+        
+        .result-table tr:nth-child(even) {
+            background-color: var(--gray-50);
+        }
+        
+        .result-table tr:hover {
+            background-color: var(--primary-light);
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-light);
+            padding: 1rem 1.25rem;
+            background-color: var(--white);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--gray-200);
+            align-self: flex-start;
+            animation: fadeIn 0.4s ease;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            opacity: 0.7;
+            animation: loadingDots 1.4s infinite ease-in-out both;
+        }
+        
+        .loading-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes loadingDots {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+        
+        .llm-answer {
+            background-color: var(--white);
+            padding: 1.25rem 1.5rem;
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--primary-color);
+            white-space: pre-wrap;
+            line-height: 1.8;
+            font-size: 0.95rem;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .llm-answer p {
+            margin-bottom: 1rem;
+        }
+        
+        .llm-answer h2, .llm-answer h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--formal-heading-color);
+            font-weight: 600;
+        }
+
+        .llm-answer h2 {
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .llm-answer h3 {
+            font-size: 1.2rem;
+            margin-top: 1.2rem;
+            margin-bottom: 0.6rem;
+        }
+        
+        .llm-answer ul, .llm-answer ol {
+            margin: 0.75rem 0 1.25rem;
+            padding-left: 1.5rem;
+        }
+        
+        .llm-answer li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .llm-answer table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            display: block;
+            max-width: 100%;
+        }
+        
+        .llm-answer th, .llm-answer td {
+            border: 1px solid var(--gray-300);
+            padding: 0.6rem;
+            text-align: left;
+            vertical-align: top;
+            word-break: normal;
+        }
+        
+        .llm-answer th {
+            background-color: var(--primary-light);
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+        
+        .llm-answer tr:nth-child(even) {
+            background-color: var(--gray-50);
+        }
+        
+        .llm-answer tr:hover {
+            background-color: var(--gray-100);
+        }
+        
+        .sources-toggle {
+            color: var(--primary-color);
+            background: none;
+            border: none;
+            margin-top: 0.75rem;
+            cursor: pointer;
+            font-size: 0.825rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            border: 1px solid transparent;
+        }
+        
+        .sources-toggle:hover {
+            background-color: var(--primary-light);
+            border-color: var(--primary-color);
+        }
+        
+        .sources-toggle::before {
+            content: "";
+            display: block;
+            width: 14px;
+            height: 14px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            transition: var(--transition);
+        }
+        
+        .sources-toggle.open::before {
+            transform: rotate(180deg);
+        }
+        
+        .sources-container {
+            margin-top: 0.75rem;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            background-color: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            font-size: 0.825rem;
+            display: none;
+            animation: slideDown 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .error-message {
+            padding: 1rem;
+            background-color: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            color: #dc2626;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        
+        .no-results {
+            padding: 1.5rem;
+            background-color: #fff3f3;
+            border: 1px solid #ffcdd2;
+            border-radius: 4px;
+            color: #b71c1c;
+            margin: 1rem 0;
+        }
+        
+        .no-results p {
+            margin-bottom: 1rem;
+        }
+        
+        .no-results ul {
+            list-style-type: disc;
+            margin-left: 1.5rem;
+        }
+        
+        .no-results li {
+            margin-bottom: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .message {
+                max-width: 90%;
+            }
+            
+            .chat-messages {
+                padding: 1rem;
+            }
+            
+            .input-container {
+                padding: 1rem;
+            }
+            
+            .welcome-message h2 {
+                font-size: 1.5rem;
+            }
+            
+            .input-container button {
+                width: 44px;
+                height: 44px;
+            }
+            
+            .llm-answer table {
+                font-size: 0.8rem;
+            }
+            
+            .llm-answer th, .llm-answer td {
+                padding: 0.4rem;
+            }
+        }
+        
+        .metadata-item {
+            display: inline-block;
+            margin-right: 0.5rem;
+            color: var(--gray-500);
+            font-size: 0.8rem;
+        }
+
+        .result-item.recursive {
+            border-left: 3px solid var(--success-color);
+            background-color: rgba(var(--success-rgb), 0.05);
+        }
+
+        .recursive-badge {
+            display: inline-block;
+            background-color: var(--success-color);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+            font-weight: 500;
+        }
+
+        .policy-badge {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+            font-weight: 500;
+        }
+
+        /* Improved result display styling */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            background: var(--bg-light);
+            border-radius: 0.5rem;
+        }
+
+        .results-container h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .result-item {
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            border: 1px solid var(--gray-200);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .result-item:hover {
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+            border-color: var(--gray-300);
+        }
+
+        .result-header {
+            margin-bottom: 0.8rem;
+        }
+
+        .document-title {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 1rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .result-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-content {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--gray-800);
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            background-color: var(--gray-50);
+            border-radius: 0.3rem;
+        }
+
+        /* Table overflow container */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        /* Add streaming-specific styles */
+        .typing-animation {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            min-height: 20px;
+        }
+        
+        .typing-dots {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 50px;
+            margin: 0 auto;
+        }
+        
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            animation: typing-dot 1.4s ease-in-out infinite;
+            opacity: 0.6;
+        }
+        
+        .typing-dots span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing-dot {
+            0%, 60%, 100% { 
+                transform: translateY(0);
+            }
+            30% { 
+                transform: translateY(-5px);
+            }
+        }
+        
+        .error {
+            color: #e53e3e;
+            padding: 8px 12px;
+            background-color: #fff5f5;
+            border-left: 3px solid #e53e3e;
+            margin: 8px 0;
+            border-radius: 4px;
+        }
+        
+        body.thinking .input-container button {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* New Citation Styles */
+        .citation {
+            color: var(--citation-color);
+            font-size: 0.9em;
+            font-weight: 500;
+            background-color: var(--primary-light);
+            padding: 0.15em 0.4em;
+            border-radius: 3px;
+            margin: 0 0.15em;
+            white-space: nowrap;
+            display: inline-block;
+            border: 1px solid rgba(79, 70, 229, 0.2);
+        }
+
+        /* Make formal policy response look better */
+        .llm-answer.policy-response {
+            padding: 1.5rem;
+            border-left: 5px solid var(--formal-heading-color);
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #fcfcfc;
+        }
+
+        .llm-answer.policy-response h2 {
+            color: var(--formal-heading-color);
+            font-weight: 600;
+            border-bottom: 1px solid rgba(37, 99, 235, 0.2);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Table improvements for policy data */
+        .markdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.92rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .markdown-table th {
+            background-color: rgba(37, 99, 235, 0.1);
+            color: var(--formal-heading-color);
+            font-weight: 600;
+            padding: 0.75rem 0.5rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .markdown-table tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        .markdown-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .markdown-table td {
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cii Chat</h1>
+        <div class="header-controls">
+            <span id="sessionInfo" class="session-info">Session: New conversation</span>
+            <button id="newChatBtn" class="new-chat-btn">New Chat</button>
+        </div>
+    </header>
+    
+    <div class="chat-container" id="chatContainer">
+        <div class="welcome-message" id="welcomeMessage">
+            <h2>Welcome to Chandigarh Policy Assistant</h2>
+            <p>I'm your formal government policy assistant, here to provide accurate information about Chandigarh government policies and regulations.</p>
+            <div class="suggestions">
+                <button class="suggestion-btn">What are the incentives for electric vehicles in Chandigarh?</button>
+                <button class="suggestion-btn">How can I set up a charging station for electric vehicles?</button>
+                <button class="suggestion-btn">What are the eligibility criteria for EV subsidies?</button>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will be added here dynamically -->
+        </div>
+    </div>
+    
+    <div class="input-container">
+        <div class="input-wrapper">
+            <input type="text" id="userInput" placeholder="Ask about Chandigarh policies..." autocomplete="off">
+        </div>
+        <button id="sendButton">
+            <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        </button>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chatMessages');
+            const userInput = document.getElementById('userInput');
+            const sendButton = document.getElementById('sendButton');
+            const welcomeMessage = document.getElementById('welcomeMessage');
+            const newChatBtn = document.getElementById('newChatBtn');
+            const sessionInfo = document.getElementById('sessionInfo');
+            const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+            
+            // Session management
+            let sessionId = localStorage.getItem('cii_chat_session_id') || null;
+            
+            // Function to start a new chat/session
+            function startNewChat() {
+                // Clear session ID
+                sessionId = null;
+                localStorage.removeItem('cii_chat_session_id');
+                
+                // Clear messages
+                chatMessages.innerHTML = '';
+                welcomeMessage.classList.remove('hidden');
+                sessionInfo.textContent = 'Session: New conversation';
+            }
+            
+            // Add event listener for new chat button
+            newChatBtn.addEventListener('click', startNewChat);
+            
+            // Add event listeners for suggestion buttons
+            suggestionBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const query = this.textContent;
+                    userInput.value = query;
+                    handleSendMessage();
+                });
+            });
+            
+            // Function to update session display
+            function updateSessionDisplay(sid) {
+                // Save session ID to local storage for persistence
+                localStorage.setItem('cii_chat_session_id', sid);
+                sessionId = sid;
+                
+                // Update display
+                const shortId = sid.substring(0, 8) + '...';
+                sessionInfo.textContent = `Session: ${shortId}`;
+            }
+            
+            // Function to format timestamp
+            function formatTimestamp() {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                return `${hours}:${minutes}`;
+            }
+            
+            // Function to add a message to the chat
+            function addMessage(content, isUser = false) {
+                // Hide welcome message once chat starts
+                welcomeMessage.classList.add('hidden');
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+                
+                // Add timestamp
+                const timestamp = document.createElement('span');
+                timestamp.classList.add('timestamp');
+                timestamp.textContent = formatTimestamp();
+                
+                if (typeof content === 'string') {
+                    messageDiv.textContent = content;
+                } else {
+                    // Assuming content is HTML element
+                    messageDiv.appendChild(content);
+                }
+                
+                messageDiv.appendChild(timestamp);
+                chatMessages.appendChild(messageDiv);
+                
+                // Auto scroll to bottom
+                setTimeout(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 100);
+            }
+            
+            // Function to format search results as a table
+            function formatResults(results) {
+                // Create a container for the results
+                const container = document.createElement('div');
+                container.className = 'results-container';
+                
+                // Create a header with count
+                const header = document.createElement('h3');
+                header.textContent = `Found ${results.length} results`;
+                container.appendChild(header);
+                
+                // Add each result
+                results.forEach((result, index) => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'result-item';
+                    
+                    // Check for special types of results
+                    const metadata = result.metadata || {};
+                    const isRecursive = metadata.recursive_retrieval === true;
+                    const isPolicyData = metadata.is_policy_data === "true" || 
+                                        metadata.is_policy_document === "true" ||
+                                        (metadata.type && metadata.type.includes("table"));
+                    
+                    // Add special styling for recursive results
+                    if (isRecursive) {
+                        resultDiv.classList.add('recursive');
+                    }
+                    
+                    // Result header with document and section info
+                    const header = document.createElement('div');
+                    header.className = 'result-header';
+                    
+                    // Document title
+                    const docTitle = document.createElement('div');
+                    docTitle.className = 'document-title';
+                    docTitle.textContent = metadata.document_title || 'Unknown Document';
+                    
+                    // Add badges if applicable
+                    if (isRecursive) {
+                        const recursiveBadge = document.createElement('span');
+                        recursiveBadge.className = 'recursive-badge';
+                        recursiveBadge.textContent = 'Related';
+                        docTitle.appendChild(recursiveBadge);
+                    }
+                    
+                    if (isPolicyData) {
+                        const policyBadge = document.createElement('span');
+                        policyBadge.className = 'policy-badge';
+                        policyBadge.textContent = 'Policy';
+                        docTitle.appendChild(policyBadge);
+                    }
+                    
+                    header.appendChild(docTitle);
+                    
+                    // Section and metadata
+                    const meta = document.createElement('div');
+                    meta.className = 'result-meta';
+                    
+                    if (metadata.section) {
+                        const section = document.createElement('span');
+                        section.className = 'metadata-item';
+                        section.textContent = `Section: ${metadata.section}`;
+                        meta.appendChild(section);
+                    }
+                    
+                    if (metadata.type) {
+                        const type = document.createElement('span');
+                        type.className = 'metadata-item';
+                        type.textContent = `Type: ${metadata.type.replace(/_/g, ' ')}`;
+                        meta.appendChild(type);
+                    }
+                    
+                    const score = document.createElement('span');
+                    score.className = 'metadata-item';
+                    score.textContent = `Score: ${result.score.toFixed(3)}`;
+                    meta.appendChild(score);
+                    
+                    if (result.source) {
+                        const source = document.createElement('span');
+                        source.className = 'metadata-item';
+                        source.textContent = `Source: ${result.source}`;
+                        meta.appendChild(source);
+                    }
+                    
+                    header.appendChild(meta);
+                    resultDiv.appendChild(header);
+                    
+                    // Result content
+                    const content = document.createElement('div');
+                    content.className = 'result-content';
+                    content.textContent = metadata.text || '';
+                    resultDiv.appendChild(content);
+                    
+                    container.appendChild(resultDiv);
+                });
+                
+                return container;
+            }
+            
+            // Function to create an answer container with sources toggle
+            function createAnswerWithSources(answer, searchResults) {
+                const container = document.createElement('div');
+                
+                // Format the answer with markdown
+                const formattedAnswer = answer.trim(); // Remove any trailing whitespace
+                
+                // Check if this appears to be a policy response for styling purposes
+                const isPolicyResponse = (
+                    formattedAnswer.includes('Chandigarh') || 
+                    formattedAnswer.includes('policy') || 
+                    formattedAnswer.includes('Source:') ||
+                    formattedAnswer.match(/##\s+(Policy|Eligibility|Requirements|Fees|Process|Regulations|Guidelines)/) ||
+                    (searchResults && searchResults.some(r => 
+                        r.metadata && 
+                        (r.metadata.is_policy_document === 'true' || r.metadata.is_policy_data === 'true')
+                    ))
+                );
+                
+                // LLM Answer
+                const answerDiv = document.createElement('div');
+                answerDiv.className = 'llm-answer';
+                
+                // Add policy-response class if applicable
+                if (isPolicyResponse) {
+                    answerDiv.classList.add('policy-response');
+                }
+                
+                // Helper function for table processing
+                function processTable(tableText) {
+                    const rows = tableText.trim().split('\n');
+                    let html = '<thead><tr>';
+                    
+                    // Process header row
+                    const headerCells = rows[0].split('|')
+                        .filter(cell => cell.trim())
+                        .map(cell => `<th>${cell.trim()}</th>`);
+                    
+                    html += headerCells.join('') + '</tr></thead><tbody>';
+                    
+                    // Skip the separator row (row[1]) and process data rows
+                    for (let i = 2; i < rows.length; i++) {
+                        html += '<tr>';
+                        const cells = rows[i].split('|')
+                            .filter(cell => cell.trim())
+                            .map(cell => {
+                                // Skip placeholder cells
+                                if (cell.trim() === '...' || cell.trim() === '-') {
+                                    return '';
+                                }
+                                return `<td>${cell.trim()}</td>`;
+                            });
+                        
+                        html += cells.join('') + '</tr>';
+                    }
+                    
+                    html += '</tbody>';
+                    return html;
+                }
+                
+                // Process markdown-like formatting
+                let processedHtml = formattedAnswer
+                    // Convert headers
+                    .replace(/^##\s+(.*?)$/gm, '<h2>$1</h2>')
+                    .replace(/^###\s+(.*?)$/gm, '<h3>$1</h3>')
+                    // Bold text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    // Lists with proper spacing
+                    .replace(/^(\s*)-\s+(.*?)$/gm, '<li>$2</li>')
+                    .replace(/(<li>.*?<\/li>\n)+/g, '<ul>$&</ul>')
+                    // Numbered lists
+                    .replace(/^\s*(\d+)\.\s+(.*?)$/gm, '<li>$2</li>')
+                    .replace(/(<li>.*?<\/li>\n)+/g, '<ol>$&</ol>')
+                    // Process citations specially
+                    .replace(/\(Source: ([^)]+)\)/g, '<span class="citation">(Source: $1)</span>')
+                    // Convert paragraphs
+                    .replace(/\n\n/g, '</p><p>')
+                    // Better table handling - process complete markdown tables
+                    .replace(/(\|[^\n]*\|)(\s*\n\|[-:| ]+\|)(\s*\n(\|[^\n]*\|)+)/g, function(match) {
+                        // Wrap table in a scrollable container
+                        return '<div class="table-container"><table class="markdown-table">' + processTable(match) + '</table></div>';
+                    });
+                    
+                // Wrap in paragraph tags if not already done
+                if (!processedHtml.startsWith('<')) {
+                    processedHtml = '<p>' + processedHtml + '</p>';
+                }
+                
+                // Set the HTML content
+                answerDiv.innerHTML = processedHtml;
+
+                // Clean up any remaining placeholder text
+                const placeholders = answerDiv.querySelectorAll('td');
+                placeholders.forEach(td => {
+                    if (td.textContent.trim() === '...' || td.textContent.trim() === '-') {
+                        td.parentNode.removeChild(td);
+                    }
+                });
+                
+                container.appendChild(answerDiv);
+                
+                // Sources toggle (only add if there are search results)
+                if (searchResults && searchResults.length > 0) {
+                    const sourcesToggle = document.createElement('button');
+                    sourcesToggle.className = 'sources-toggle';
+                    sourcesToggle.textContent = 'Show sources';
+                    container.appendChild(sourcesToggle);
+                    
+                    // Sources container
+                    const sourcesContainer = document.createElement('div');
+                    sourcesContainer.className = 'sources-container';
+                    sourcesContainer.appendChild(formatResults(searchResults));
+                    container.appendChild(sourcesContainer);
+                    
+                    // Toggle sources visibility
+                    sourcesToggle.addEventListener('click', function() {
+                        if (sourcesContainer.style.display === 'block') {
+                            sourcesContainer.style.display = 'none';
+                            sourcesToggle.textContent = 'Show sources';
+                            sourcesToggle.classList.remove('open');
+                        } else {
+                            sourcesContainer.style.display = 'block';
+                            sourcesToggle.textContent = 'Hide sources';
+                            sourcesToggle.classList.add('open');
+                        }
+                    });
+                }
+                
+                return container;
+            }
+            
+            // Function to show loading indicator
+            function showLoading() {
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading';
+                loadingDiv.id = 'loadingIndicator';
+                
+                const loadingText = document.createElement('span');
+                loadingText.textContent = 'Searching';
+                
+                const dots = document.createElement('div');
+                dots.className = 'loading-dots';
+                
+                for (let i = 0; i < 3; i++) {
+                    const dot = document.createElement('span');
+                    dots.appendChild(dot);
+                }
+                
+                loadingDiv.appendChild(loadingText);
+                loadingDiv.appendChild(dots);
+                
+                chatMessages.appendChild(loadingDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                return loadingDiv;
+            }
+            
+            // Function to send a query to the backend
+            async function sendQuery(query) {
+                console.log('🚀 SENDQUERY DEBUG: Starting sendQuery with:', query);
+                try {
+                    // Add loading message
+                    const loadingDiv = showLoading();
+                    
+                    console.log('🚀 SENDQUERY DEBUG: Making fetch request to localhost:3003/api/search');
+                    const response = await fetch('http://localhost:3003/api/search', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: query,
+                            top_k: 4,
+                            alpha: 0.5,
+                            fusion_method: 'rrf',
+                            session_id: sessionId
+                        }),
+                    });
+                    
+                    console.log('🚀 SENDQUERY DEBUG: Response status:', response.status, response.ok);
+                    
+                    // Remove loading message
+                    if (loadingDiv && loadingDiv.parentNode) {
+                        loadingDiv.parentNode.removeChild(loadingDiv);
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error(`Error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('🚀 SENDQUERY DEBUG: Received data:', data);
+                    
+                    if (data.error) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error-message';
+                        errorDiv.textContent = `Error: ${data.error}`;
+                        addMessage(errorDiv);
+                        return;
+                    }
+                    
+                    // Update session ID if provided
+                    if (data.metadata) {
+                        updateSessionDisplay(data.metadata.session_id);
+                        
+                        // Show retrieval strategy used
+                        if (data.metadata.is_policy_question) {
+                            console.log("Policy question detected, using specialized retrieval");
+                            if (data.metadata.recursive_retrieval) {
+                                console.log("Recursive retrieval enabled for comprehensive policy information");
+                            }
+                        }
+                    }
+                    
+                    // If there's an LLM answer, display it - check both 'response' and 'answer' fields
+                    if (data.response || data.answer) {
+                        const answerText = data.response || data.answer;
+                        console.log('🚀 SENDQUERY DEBUG: Displaying answer:', answerText);
+                        const answerElement = createAnswerWithSources(answerText, data.search_results || data.results);
+                        addMessage(answerElement);
+                        return;
+                    }
+                    
+                    // If no answer but we have results, show them
+                    if (data.results && data.results.length > 0) {
+                        const resultsElement = formatResults(data.results);
+                        addMessage(resultsElement);
+                    } else {
+                        const noResultsDiv = document.createElement('div');
+                        noResultsDiv.className = 'no-results';
+                        noResultsDiv.innerHTML = `
+                            <p>No results found for your query: "${data.query}"</p>
+                            <p>Suggestions:</p>
+                            <ul>
+                                <li>Check your spelling</li>
+                                <li>Try more general keywords</li>
+                                <li>Try different keywords</li>
+                                <li>Try removing filters</li>
+                            </ul>
+                        `;
+                        addMessage(noResultsDiv);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage(`Error: ${error.message}. Please make sure the server is running.`);
+                }
+            }
+            
+            // Function to handle sending a message
+            function handleSendMessage() {
+                console.log('📤 HANDLE SEND DEBUG: handleSendMessage called');
+                const query = userInput.value.trim();
+                console.log('📤 HANDLE SEND DEBUG: Query value:', query);
+                if (query) {
+                    addMessage(query, true);
+                    userInput.value = '';
+                    console.log('📤 HANDLE SEND DEBUG: Calling sendQuery with:', query);
+                    sendQuery(query);
+                } else {
+                    console.log('📤 HANDLE SEND DEBUG: Query is empty, not sending');
+                }
+            }
+            
+            // Event listener for send button
+            sendButton.addEventListener('click', handleSendMessage);
+            
+            // Event listener for Enter key
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleSendMessage();
+                }
+            });
+            
+            // Focus on input field when page loads
+            userInput.focus();
+        });
+
+        // Update the askQuestion function to use streaming
+        function askQuestion(question, useStreaming = false) {
+            console.log('❓ ASK QUESTION DEBUG: askQuestion called with:', { question, useStreaming });
+            if (!question.trim()) return;
+            
+            const sessionId = getCurrentSessionId();
+            console.log('❓ ASK QUESTION DEBUG: sessionId:', sessionId);
+            addUserMessage(question);
+            
+            // Show thinking indicator
+            startThinking();
+            
+            if (useStreaming) {
+                console.log('❓ ASK QUESTION DEBUG: Using streaming endpoint');
+                // Use streaming endpoint
+                streamQuestion(question, sessionId);
+            } else {
+                console.log('❓ ASK QUESTION DEBUG: Using regular endpoint (fetchQuestion)');
+                // Use regular endpoint (fallback)
+                fetchQuestion(question, sessionId);
+            }
+        }
+
+        // Add this new function to handle streaming responses
+        function streamQuestion(question, sessionId) {
+            // Create a temporary message container that will be updated with streaming content
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'message assistant-message';
+            messageContainer.innerHTML = `
+                <div class="message-avatar assistant">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 16v-4"></path>
+                        <path d="M12 8h.01"></path>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <div class="message-text typing-animation">
+                        <div class="typing-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const messagesContainer = document.querySelector('.chat-messages');
+            messagesContainer.appendChild(messageContainer);
+            
+            // Scroll to the bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Prepare state for handling streaming response
+            let contentBuffer = '';
+            let messageTextElement = messageContainer.querySelector('.message-text');
+            let hasStartedReceiving = false;
+            
+            // Handle streaming data
+            function handleStreamData(data) {
+                if (!hasStartedReceiving) {
+                    // Clear the typing animation when we start receiving real content
+                    messageTextElement.innerHTML = '';
+                    messageTextElement.classList.remove('typing-animation');
+                    hasStartedReceiving = true;
+                }
+                
+                switch(data.type) {
+                    case 'metadata':
+                        // Metadata about the response, can be used to update UI
+                        console.log('Received metadata:', data);
+                        break;
+                        
+                    case 'search_results':
+                        // Optionally show search results while waiting for the response
+                        console.log('Search results:', data.results);
+                        break;
+                        
+                    case 'chunk':
+                        // Append new content to the message
+                        contentBuffer += data.content;
+                        messageTextElement.innerHTML = markdownToHTML(contentBuffer);
+                        // Auto-scroll to keep up with content
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        break;
+                        
+                    case 'error':
+                        console.error('Error in streaming:', data.error);
+                        messageTextElement.innerHTML += `<div class="error">Error: ${data.error}</div>`;
+                        stopThinking();
+                        break;
+                        
+                    case 'done':
+                        // Response complete, clean up
+                        stopThinking();
+                        
+                        // Apply syntax highlighting to code blocks
+                        messageContainer.querySelectorAll('pre code').forEach((block) => {
+                            if (typeof hljs !== 'undefined') {
+                                hljs.highlightElement(block);
+                            }
+                        });
+                        
+                        // Format tables if any
+                        messageContainer.querySelectorAll('table').forEach(table => {
+                            table.classList.add('markdown-table');
+                        });
+                        
+                        break;
+                }
+            }
+            
+            // Send the request as JSON through POST with proper streaming handling
+                            fetch('http://localhost:3003/api/search/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: question,
+                    session_id: sessionId
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    stopThinking();
+                    messageTextElement.innerHTML = "Error: Couldn't connect to the streaming endpoint. Please try again.";
+                    messageTextElement.classList.remove('typing-animation');
+                    return;
+                }
+                
+                // Handle streaming response
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                function readStream() {
+                    return reader.read().then(({ done, value }) => {
+                        if (done) {
+                            stopThinking();
+                            return;
+                        }
+                        
+                        // Decode the chunk
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.substring(6));
+                                    handleStreamData(data);
+                                } catch (e) {
+                                    console.error('Error parsing stream data:', e, line);
+                                }
+                            }
+                        }
+                        
+                        return readStream();
+                    });
+                }
+                
+                return readStream();
+            }).catch(error => {
+                stopThinking();
+                messageTextElement.innerHTML = `Error: ${error.message}`;
+                messageTextElement.classList.remove('typing-animation');
+            });
+            
+
+        }
+
+        // Keep the original fetch function as a fallback
+        function fetchQuestion(question, sessionId) {
+            console.log('🔍 FETCH DEBUG: Starting fetchQuestion with:', { question, sessionId });
+            
+            fetch('http://localhost:3003/api/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: question,
+                    session_id: sessionId
+                })
+            })
+            .then(response => {
+                console.log('🔍 FETCH DEBUG: Received response:', response.status, response.ok);
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔍 FETCH DEBUG: Parsed JSON data:', data);
+                stopThinking();
+                
+                // Add the assistant's response message - use 'response' field from our backend
+                const responseText = data.response || data.answer || "No response received";
+                console.log('🔍 FETCH DEBUG: Response text to display:', responseText);
+                addAssistantMessage(responseText);
+                
+                // Update session ID if needed
+                if (data.metadata && data.metadata.session_id) {
+                    setCurrentSessionId(data.metadata.session_id);
+                }
+            })
+            .catch(error => {
+                console.error('🔍 FETCH ERROR:', error);
+                stopThinking();
+                addErrorMessage("Sorry, there was an error processing your request. Please try again.");
+            });
+        }
+
+        // Add these helper functions if they don't already exist
+        function startThinking() {
+            document.body.classList.add('thinking');
+        }
+
+        function stopThinking() {
+            document.body.classList.remove('thinking');
+        }
+
+        // Function to convert markdown to HTML
+        function markdownToHTML(markdown) {
+            if (!markdown) return '';
+            
+            // Replace code blocks with syntax highlighting
+            markdown = markdown.replace(/```(\w+)?\n([\s\S]*?)\n```/g, function(match, language, code) {
+                language = language || '';
+                return `<pre><code class="${language}">${escapeHTML(code)}</code></pre>`;
+            });
+            
+            // Replace inline code
+            markdown = markdown.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Replace headers
+            markdown = markdown.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+            markdown = markdown.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+            markdown = markdown.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+            
+            // Replace bold and italic
+            markdown = markdown.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            markdown = markdown.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Handle citations specially
+            markdown = markdown.replace(/\(Source: ([^)]+)\)/g, '<span class="citation">(Source: $1)</span>');
+            
+            // Replace unordered lists
+            markdown = markdown.replace(/^\s*[\-\*] (.*$)/gm, '<li>$1</li>');
+            markdown = markdown.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+            
+            // Replace ordered lists
+            markdown = markdown.replace(/^\s*\d+\. (.*$)/gm, '<li>$1</li>');
+            markdown = markdown.replace(/(<li>.*<\/li>)/gs, '<ol>$1</ol>');
+            
+            // Fix nested lists (simple approach)
+            markdown = markdown.replace(/<\/ul>\s*<ul>/g, '');
+            markdown = markdown.replace(/<\/ol>\s*<ol>/g, '');
+            
+            // Enhanced table handling with better column alignment support
+            const tableRegex = /\|(.+)\|\n\|([-:]+[-| :]*)\|\n((?:\|(?:.+)\|\n?)+)/g;
+            markdown = markdown.replace(tableRegex, function(match, headerRow, delimiterRow, bodyRows) {
+                // Process header cells
+                const headers = headerRow.split('|').map(h => h.trim()).filter(Boolean);
+                const headerHTML = headers.map(h => `<th>${escapeHTML(h)}</th>`).join('');
+                
+                // Process alignment row to determine column alignment
+                const alignments = delimiterRow.split('|').map(d => d.trim()).filter(Boolean);
+                const colAlignments = alignments.map(a => {
+                    if (a.startsWith(':') && a.endsWith(':')) return 'center';
+                    if (a.endsWith(':')) return 'right';
+                    return 'left';
+                });
+                
+                // Process body rows with proper alignment
+                const bodyRowsArray = bodyRows.trim().split('\n');
+                let bodyHTML = '';
+                
+                for (const row of bodyRowsArray) {
+                    const cells = row.split('|').map(c => c.trim()).filter(Boolean);
+                    
+                    // Apply alignment to each cell
+                    const cellsHTML = cells.map((c, i) => {
+                        const align = i < colAlignments.length ? colAlignments[i] : 'left';
+                        return `<td style="text-align: ${align}">${escapeHTML(c)}</td>`;
+                    }).join('');
+                    
+                    bodyHTML += `<tr>${cellsHTML}</tr>`;
+                }
+                
+                return `<div class="table-container">
+                    <table class="markdown-table">
+                        <thead><tr>${headerHTML}</tr></thead>
+                        <tbody>${bodyHTML}</tbody>
+                    </table>
+                </div>`;
+            });
+            
+            // Replace paragraphs (do this last)
+            markdown = markdown.replace(/^\s*(\n)?(.+)/gm, function(match, newline, content) {
+                // Skip content that already has HTML tags
+                if (/^<(\/)?(h1|h2|h3|ul|ol|li|table|code|pre|blockquote|div|span)/.test(content)) {
+                    return match;
+                }
+                return `<p>${content}</p>`;
+            });
+            
+            // Fix line breaks
+            markdown = markdown.replace(/\n\s*\n/g, '<br>');
+            
+            return markdown;
+        }
+        
+        // Helper function to escape HTML
+        function escapeHTML(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
