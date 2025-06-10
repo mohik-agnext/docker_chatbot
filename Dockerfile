@@ -20,19 +20,17 @@ COPY requirements.txt .
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install dependencies with safe optimization
+# Install dependencies with safe optimization and NLTK data
 RUN pip install --upgrade pip --no-cache-dir && \
     pip uninstall -y pinecone-client || true && \
     pip install --no-cache-dir -r requirements.txt && \
+    python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)" && \
     pip cache purge && \
     # Conservative cleanup - only remove obviously safe files
     find /opt/venv -name "*.pyc" -delete && \
     find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + || true && \
     find /opt/venv -type d -name "tests" -exec rm -rf {} + || true && \
     find /opt/venv -type d -name "examples" -exec rm -rf {} + || true
-
-# Download only essential NLTK data
-RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)"
 
 # ================================  
 # Stage 2: Ultra-minimal runtime
