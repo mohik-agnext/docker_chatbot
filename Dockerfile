@@ -83,4 +83,4 @@ HEALTHCHECK --interval=45s --timeout=15s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:$PORT/ready || exit 1
 
 # Use gunicorn for production deployment
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "fast_hybrid_search_server:app"] 
+CMD python railway_env_check.py && gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app 
