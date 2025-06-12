@@ -1,0 +1,42 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment and config
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+server.log
+nohup.out
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Cache directories
+cache/*.pkl
+/tmp/
+/temp/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+test_*.py
+*_test.py
+
+# Development files
+enhanced_processing_results.json 

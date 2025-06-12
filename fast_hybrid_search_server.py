@@ -185,9 +185,14 @@ def initialize_services():
         
         # Initialize fast searcher
         print("⚡ Loading performance-optimized hybrid search...")
+        
+        # Get Jina API key from config
+        jina_api_key = getattr(config, 'JINA_API_KEY', None) or os.getenv('JINA_API_KEY')
+        
         fast_searcher = PerformanceOptimizedHybridSearch(
             pinecone_api_key=config.PINECONE_API_KEY,
             pinecone_index=config.PINECONE_INDEX,
+            jina_api_key=jina_api_key,
             alpha=config.DEFAULT_ALPHA,
             fusion_method=config.DEFAULT_FUSION_METHOD,
             cache_dir=cache_dir

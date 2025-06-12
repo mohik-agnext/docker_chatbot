@@ -13,7 +13,7 @@ load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "your_pinecone_api_key_here")
 PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
 PINECONE_INDEX = os.getenv("PINECONE_INDEX", "cursor2")
-PINECONE_DIMENSION = int(os.getenv("PINECONE_DIMENSION", "1024"))
+PINECONE_DIMENSION = int(os.getenv("PINECONE_DIMENSION", "1024"))  # Updated for Jina embeddings
 PINECONE_HOST = os.getenv("PINECONE_HOST", "cursor2-ikkf5bw.svc.aped-4627-b74a.pinecone.io")
 
 # LLM Provider settings - Choose which one to use
@@ -40,8 +40,11 @@ COHERE_MODEL = os.getenv("COHERE_MODEL", "embed-english-v3.0")
 
 # HuggingFace settings (if using HuggingFace)
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "your_huggingface_api_key_here")
-HUGGINGFACE_MODEL = os.getenv("HUGGINGFACE_MODEL", "BAAI/bge-large-en-v1.5")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
+HUGGINGFACE_MODEL = os.getenv("HUGGINGFACE_MODEL", "all-MiniLM-L6-v2")  # Lightweight: 80MB vs 1.3GB
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")  # Fast deployment model
+
+# Jina AI settings (for fast API-based embeddings)
+JINA_API_KEY = os.getenv("JINA_API_KEY", "your_jina_api_key_here")
 
 # For testing multiple embedding models
 EMBEDDING_MODELS = {

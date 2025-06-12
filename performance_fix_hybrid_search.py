@@ -7,17 +7,14 @@ This version addresses the critical performance bottlenecks in the original impl
 2. Implements query embedding caching
 3. Reduces namespace searches with intelligent targeting
 4. Adds streaming response capability
+5. JINA API support for fast deployment without local model loading
 """
 
 import json
 import numpy as np
 from typing import List, Dict, Any
 from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
-from rank_bm25 import BM25Okapi
-import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
+import requests
 import time
 import pickle
 import os
@@ -25,21 +22,42 @@ from functools import wraps
 import config
 from semantic_namespace_mapper import semantic_mapper
 
+# Only import sentence_transformers if needed for local models
+try:
+    from sentence_transformers import SentenceTransformer
+    HAS_SENTENCE_TRANSFORMERS = True
+except ImportError:
+    HAS_SENTENCE_TRANSFORMERS = False
+
+try:
+    import nltk
+    from nltk.tokenize import word_tokenize
+    from nltk.corpus import stopwords
+    HAS_NLTK = True
+except ImportError:
+    HAS_NLTK = False
+
+from rank_bm25 import BM25Okapi
+
 class PerformanceOptimizedHybridSearch:
     def __init__(self, 
                  pinecone_api_key,
                  pinecone_index,
                  embedding_model=None,
+                 jina_api_key=None,
                  alpha=0.7,
                  fusion_method="rrf",
                  cache_dir="cache"):
         """
         Performance-optimized hybrid search with aggressive caching.
+        Supports both local models and Jina API for fast deployment.
         """
         self.alpha = alpha
         self.fusion_method = fusion_method
         self.cache_dir = cache_dir
         self.embedding_dimension = config.PINECONE_DIMENSION
+        self.jina_api_key = jina_api_key
+        self.use_jina_api = bool(jina_api_key)
         
         # Create cache directory
         os.makedirs(cache_dir, exist_ok=True)
@@ -52,12 +70,22 @@ class PerformanceOptimizedHybridSearch:
         }
         
         print(f"\n🚀 Initializing Performance-Optimized Hybrid Search")
+        if self.use_jina_api:
+            print(f"⚡ FAST MODE: Using Jina API for embeddings (no local model loading)")
         
         # 1. FAST Pinecone initialization
         self._initialize_pinecone_fast(pinecone_api_key, pinecone_index)
         
-        # 2. FAST embedding model loading
-        self._initialize_embedding_model_fast(embedding_model)
+        # 2. FAST embedding model loading (optional with Jina API)
+        if self.use_jina_api:
+            print(f"🌐 Using Jina API for embeddings - skipping local model")
+            self.embedding_model = None
+            self.embedding_dimension_actual = 1024  # Jina v3 dimension
+            # Initialize embedding cache for Jina API
+            self.query_embedding_cache = {}
+            self.max_cache_size = 1000
+        else:
+            self._initialize_embedding_model_fast(embedding_model)
         
         # 3. CACHED BM25 initialization (major optimization)
         self._initialize_bm25_cached()
@@ -275,11 +303,17 @@ class PerformanceOptimizedHybridSearch:
         
         # Generate new embedding
         start_time = time.time()
-        embedding = self.embedding_model.encode(query)
-        embedding_time = time.time() - start_time
         
-        # Normalize if needed
-        embedding = embedding / np.linalg.norm(embedding)
+        if self.use_jina_api:
+            embedding = self._get_jina_embedding(query)
+            print(f"🌐 Jina API embedding generated in {time.time() - start_time:.3f}s")
+        else:
+            if not self.embedding_model:
+                raise ValueError("No embedding model available (local model not loaded and Jina API not configured)")
+            embedding = self.embedding_model.encode(query)
+            # Normalize if needed
+            embedding = embedding / np.linalg.norm(embedding)
+            print(f"🧠 Local embedding generated in {time.time() - start_time:.3f}s")
         
         # Cache management
         if len(self.query_embedding_cache) >= self.max_cache_size:
@@ -288,7 +322,6 @@ class PerformanceOptimizedHybridSearch:
             del self.query_embedding_cache[oldest_key]
         
         self.query_embedding_cache[query_key] = embedding
-        print(f"🧠 New embedding generated in {embedding_time:.3f}s")
         
         return embedding
     
@@ -428,6 +461,33 @@ class PerformanceOptimizedHybridSearch:
             "production_ready": self.performance_stats["avg_response_time"] < 5.0
         }
 
+    def _get_jina_embedding(self, text: str) -> np.ndarray:
+        """Get embedding using Jina API."""
+        if not self.jina_api_key:
+            raise ValueError("Jina API key not provided")
+        
+        url = "https://api.jina.ai/v1/embeddings"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.jina_api_key}"
+        }
+        data = {
+            "model": "jina-embeddings-v3",
+            "task": "retrieval.query",
+            "dimensions": 1024,
+            "input": [text]
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+            embedding = np.array(result['data'][0]['embedding'])
+            return embedding / np.linalg.norm(embedding)  # Normalize
+        except Exception as e:
+            print(f"❌ Jina API error: {e}")
+            raise e
+
 # Fast execution function for server
 def fast_execute(params):
     """Fast execution optimized for production use."""
@@ -443,6 +503,7 @@ def fast_execute(params):
             fast_searcher = PerformanceOptimizedHybridSearch(
                 pinecone_api_key=params.get('pineconeApiKey', ''),
                 pinecone_index=params.get('pineconeIndex', 'cursor2'),
+                jina_api_key=params.get('jinaApiKey', None),
                 alpha=float(params.get('alpha', 0.5)),
                 fusion_method=params.get('fusion_method', 'rrf')
             )
@@ -491,7 +552,8 @@ if __name__ == "__main__":
     # Initialize once
     searcher = PerformanceOptimizedHybridSearch(
         pinecone_api_key="test_key",
-        pinecone_index="cursor2"
+        pinecone_index="cursor2",
+        jina_api_key="test_jina_key"
     )
     
     for query in test_queries:

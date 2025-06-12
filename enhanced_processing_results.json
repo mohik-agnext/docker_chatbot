@@ -1,0 +1,117 @@
+{
+  "total_files": 11,
+  "total_chunks": 463,
+  "total_facts": 243,
+  "namespace_counts": {
+    "industrial_policy_fact": 19,
+    "industrial_policy_clause": 32,
+    "industrial_policy_section": 14,
+    "industrial_policy_document": 2,
+    "data_policy_fact": 1,
+    "data_policy_clause": 16,
+    "data_policy_section": 1,
+    "data_policy_document": 1,
+    "it_policy_fact": 5,
+    "it_policy_clause": 18,
+    "it_policy_section": 3,
+    "it_policy_document": 2,
+    "ev_policy_fact": 104,
+    "ev_policy_clause": 31,
+    "ev_policy_section": 8,
+    "ev_policy_document": 2,
+    "general_policy_clause": 28,
+    "general_policy_section": 12,
+    "general_policy_fact": 37,
+    "general_policy_document": 2,
+    "parking_policy_fact": 60,
+    "parking_policy_clause": 28,
+    "parking_policy_section": 6,
+    "parking_policy_document": 1,
+    "cd_waste_policy_fact": 17,
+    "cd_waste_policy_clause": 11,
+    "cd_waste_policy_section": 1,
+    "cd_waste_policy_document": 1
+  },
+  "processing_errors": [
+    "Error processing Excise Policy Chandigarh 2024-25.txt: no such group"
+  ],
+  "files_processed": [
+    {
+      "filename": "Amendment - Chandigarh Industrial Policy 2019.txt",
+      "doc_type": "industrial_policy",
+      "chunks": 6,
+      "facts": 1,
+      "content_length": 3659
+    },
+    {
+      "filename": "Chandigarh Data Sharing & Accessibility Policy.txt",
+      "doc_type": "data_policy",
+      "chunks": 19,
+      "facts": 1,
+      "content_length": 20196
+    },
+    {
+      "filename": "Chandigarh IT Policy 2013.txt",
+      "doc_type": "it_policy",
+      "chunks": 19,
+      "facts": 3,
+      "content_length": 18574
+    },
+    {
+      "filename": "Amendments - Chandigarh EV Policy 2022.txt",
+      "doc_type": "ev_policy",
+      "chunks": 47,
+      "facts": 40,
+      "content_length": 5483
+    },
+    {
+      "filename": "Guidelines - Disposal of Obsolete IT Equipment 2014.txt",
+      "doc_type": "general_policy",
+      "chunks": 63,
+      "facts": 37,
+      "content_length": 14548
+    },
+    {
+      "filename": "Chandigarh Parking Policy 2020.txt",
+      "doc_type": "parking_policy",
+      "chunks": 95,
+      "facts": 60,
+      "content_length": 29368
+    },
+    {
+      "filename": "SEZ Policy Chandigarh - 2015.txt",
+      "doc_type": "general_policy",
+      "chunks": 16,
+      "facts": 0,
+      "content_length": 11883
+    },
+    {
+      "filename": "Chandigarh Industrial Policy 2015.txt",
+      "doc_type": "industrial_policy",
+      "chunks": 61,
+      "facts": 18,
+      "content_length": 31095
+    },
+    {
+      "filename": "Chandigarh ITeS Policy 2003.txt",
+      "doc_type": "it_policy",
+      "chunks": 9,
+      "facts": 2,
+      "content_length": 4337
+    },
+    {
+      "filename": "Chandigarh Policy for managing Construction & Demolition (C&D) waste.txt",
+      "doc_type": "cd_waste_policy",
+      "chunks": 30,
+      "facts": 17,
+      "content_length": 13391
+    },
+    {
+      "filename": "Chandigarh Electric Vehicle Policy 2022.txt",
+      "doc_type": "ev_policy",
+      "chunks": 98,
+      "facts": 64,
+      "content_length": 26730
+    }
+  ]
+}
