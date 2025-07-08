@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: chandigarh-policy-assistant
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FLASK_ENV
+        value: production
+      - key: USE_JINA_API
+        value: true
+      - key: JINA_MODEL
+        value: jina-embeddings-v3
+      # Add your actual API keys in Render dashboard
+      - key: PINECONE_API_KEY
+        sync: false  # Set in Render dashboard
+      - key: JINA_API_KEY
+        sync: false  # Set in Render dashboard  
+      - key: GROQ_API_KEY
+        sync: false  # Set in Render dashboard
+      - key: PINECONE_INDEX
+        value: cursor2
+    buildCommand: ""  # Docker build handles everything
+    startCommand: ""  # Dockerfile CMD handles startup
+    healthCheckPath: "/ready"
+    autoDeploy: true 

@@ -1,5 +1,5 @@
-# Chandigarh Policy Assistant - Jina v3 API Optimized for Railway (<2GB)
-# Ultra-lightweight build with API-only dependencies
+# Chandigarh Policy Assistant - Render Deployment Optimized
+# Ultra-lightweight build with Jina API-only dependencies
 
 # ================================
 # Stage 1: Builder (minimal dependencies)
@@ -42,8 +42,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/* \
     && apt-get clean && apt-get autoremove -y
 
-# Create non-root user
-RUN useradd -m -u 1000 railwayuser
+# Create non-root user for Render
+RUN useradd -m -u 1000 renderuser
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -52,35 +52,35 @@ ENV PATH="/opt/venv/bin:$PATH"
 WORKDIR /app
 
 # Copy only essential application files (API-optimized)
-COPY --chown=railwayuser:railwayuser fast_hybrid_search_server.py .
-COPY --chown=railwayuser:railwayuser performance_fix_hybrid_search.py .
-COPY --chown=railwayuser:railwayuser semantic_namespace_mapper.py .
-COPY --chown=railwayuser:railwayuser config.py .
-COPY --chown=railwayuser:railwayuser hybrid_search_frontend.html .
-COPY --chown=railwayuser:railwayuser index.html .
-COPY --chown=railwayuser:railwayuser cache/ ./cache/
+COPY --chown=renderuser:renderuser fast_hybrid_search_server.py .
+COPY --chown=renderuser:renderuser performance_fix_hybrid_search.py .
+COPY --chown=renderuser:renderuser semantic_namespace_mapper.py .
+COPY --chown=renderuser:renderuser config.py .
+COPY --chown=renderuser:renderuser hybrid_search_frontend.html .
+COPY --chown=renderuser:renderuser index.html .
+COPY --chown=renderuser:renderuser cache/ ./cache/
 
 # Create minimal cache structure
 RUN mkdir -p /tmp/cache && \
-    chown -R railwayuser:railwayuser . /tmp/cache && \
+    chown -R renderuser:renderuser . /tmp/cache && \
     chmod -R 755 . && \
     chmod 777 /tmp/cache
 
-USER railwayuser
+USER renderuser
 
-# Railway environment variables (Jina v3 optimized)
+# Render environment variables (Jina v3 optimized)
 ENV FLASK_ENV=production \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000 \
+    PORT=10000 \
     USE_JINA_API=true \
     JINA_MODEL=jina-embeddings-v3
 
 EXPOSE $PORT
 
-# Optimized health check for faster startup
+# Optimized health check for Render
 HEALTHCHECK --interval=45s --timeout=15s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:$PORT/ready || exit 1
 
-# Use gunicorn for production deployment
-CMD python railway_env_check.py && gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app 
+# Use gunicorn for production deployment (Render optimized)
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app 
