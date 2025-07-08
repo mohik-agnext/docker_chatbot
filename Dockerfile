@@ -58,6 +58,8 @@ COPY --chown=renderuser:renderuser semantic_namespace_mapper.py .
 COPY --chown=renderuser:renderuser config.py .
 COPY --chown=renderuser:renderuser hybrid_search_frontend.html .
 COPY --chown=renderuser:renderuser index.html .
+COPY --chown=renderuser:renderuser render_env_check.py .
+COPY --chown=renderuser:renderuser debug_init.py .
 COPY --chown=renderuser:renderuser cache/ ./cache/
 
 # Create minimal cache structure
@@ -69,18 +71,22 @@ RUN mkdir -p /tmp/cache && \
 USER renderuser
 
 # Render environment variables (Jina v3 optimized)
+# Note: Render will override PORT, so we use both PORT and FLASK_PORT
 ENV FLASK_ENV=production \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=10000 \
     USE_JINA_API=true \
-    JINA_MODEL=jina-embeddings-v3
+    JINA_MODEL=jina-embeddings-v3 \
+    FLASK_PORT=10000
 
-EXPOSE $PORT
+# Expose port (Render will use what it assigns)
+EXPOSE 8080
+EXPOSE 10000
 
 # Optimized health check for Render
 HEALTHCHECK --interval=45s --timeout=15s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:$PORT/ready || exit 1
+    CMD curl -f http://localhost:${PORT:-10000}/ready || exit 1
 
 # Use gunicorn for production deployment (Render optimized)
-CMD gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app 
+# Use PORT if set by Render, otherwise use 10000
+CMD python render_env_check.py && gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app 
