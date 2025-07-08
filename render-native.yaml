@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: chandigarh-policy-assistant
-    env: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: ./
+    name: chandigarh-policy-assistant-native
+    env: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt && python -c 'import nltk; nltk.download(\"punkt\", quiet=True); nltk.download(\"stopwords\", quiet=True)'"
+    startCommand: "python render_env_check.py && gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app"
     envVars:
       - key: PORT
         value: 10000
@@ -13,21 +14,19 @@ services:
         value: true
       - key: JINA_MODEL
         value: jina-embeddings-v3
-      # Add your actual API keys in Render dashboard
       - key: PINECONE_API_KEY
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: JINA_API_KEY
-        sync: false  # Set in Render dashboard  
+        sync: false
       - key: GROQ_API_KEY
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: PINECONE_INDEX
         value: cursor2
       - key: PINECONE_ENVIRONMENT
         value: us-east-1
       - key: PINECONE_HOST
         value: cursor2-ikkf5bw.svc.aped-4627-b74a.pinecone.io
-    # Force Docker mode - no build/start commands for auto-detection
-    buildCommand: ""  
-    startCommand: ""  
+      - key: PYTHONUNBUFFERED
+        value: 1
     healthCheckPath: "/ready"
     autoDeploy: true 
