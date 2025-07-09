@@ -471,22 +471,124 @@ def status():
 @app.route('/ready')
 def ready_check():
     """Detailed readiness check for debugging."""
+    import os
+    
     status = {
         "server": "running",
         "searcher_initialized": fast_searcher is not None,
         "groq_initialized": groq_client is not None,
         "timestamp": time.time(),
-        "message": "Server is healthy and responding"
+        "message": "Server is healthy and responding",
+        "environment_check": {
+            "PINECONE_API_KEY": "✅" if config.PINECONE_API_KEY else "❌",
+            "JINA_API_KEY": "✅" if (getattr(config, 'JINA_API_KEY', None) or os.getenv('JINA_API_KEY')) else "❌",
+            "GROQ_API_KEY": "✅" if config.GROQ_API_KEY else "❌",
+            "PINECONE_INDEX": config.PINECONE_INDEX if hasattr(config, 'PINECONE_INDEX') else "❌",
+            "PORT": os.getenv('PORT', 'not set'),
+            "FLASK_ENV": os.getenv('FLASK_ENV', 'not set')
+        },
+        "system_check": {
+            "cache_dir_exists": os.path.exists("cache"),
+            "tmp_cache_exists": os.path.exists("/tmp/cache"),
+            "current_directory": os.getcwd(),
+            "python_version": os.sys.version.split()[0]
+        }
     }
     
     if fast_searcher and groq_client:
         status["status"] = "fully_ready"
         status["message"] = "All services initialized and ready"
+        try:
+            # Test searcher functionality
+            test_results = fast_searcher.fast_search("test", top_k=1)
+            status["searcher_test"] = "✅ Working" if test_results else "⚠️ No results"
+        except Exception as e:
+            status["searcher_test"] = f"❌ Error: {str(e)[:100]}"
         return jsonify(status), 200
     else:
-        status["status"] = "initializing"
+        status["status"] = "initializing" 
         status["message"] = "Server running, AI services loading in background"
+        
+        # Add detailed status for debugging
+        if not fast_searcher:
+            status["searcher_status"] = "❌ Not initialized - check logs for errors"
+        if not groq_client:
+            status["groq_status"] = "❌ Not initialized - check API key and connectivity"
+            
         return jsonify(status), 200  # Return 200 even when initializing for HF health check
+
+@app.route('/debug')
+def debug_info():
+    """Comprehensive debug information."""
+    import os
+    import sys
+    
+    debug_data = {
+        "server_status": "running",
+        "initialization_status": {
+            "fast_searcher": "✅ Ready" if fast_searcher else "❌ Not initialized",
+            "groq_client": "✅ Ready" if groq_client else "❌ Not initialized"
+        },
+        "environment_variables": {
+            "PINECONE_API_KEY": "Set" if os.getenv('PINECONE_API_KEY') else "Missing",
+            "JINA_API_KEY": "Set" if os.getenv('JINA_API_KEY') else "Missing",  
+            "GROQ_API_KEY": "Set" if os.getenv('GROQ_API_KEY') else "Missing",
+            "PINECONE_INDEX": os.getenv('PINECONE_INDEX', 'Not set'),
+            "PORT": os.getenv('PORT', 'Not set'),
+            "FLASK_ENV": os.getenv('FLASK_ENV', 'Not set')
+        },
+        "config_check": {
+            "PINECONE_API_KEY": hasattr(config, 'PINECONE_API_KEY') and bool(config.PINECONE_API_KEY),
+            "JINA_API_KEY": hasattr(config, 'JINA_API_KEY') and bool(config.JINA_API_KEY),
+            "GROQ_API_KEY": hasattr(config, 'GROQ_API_KEY') and bool(config.GROQ_API_KEY),
+            "PINECONE_INDEX": hasattr(config, 'PINECONE_INDEX') and bool(config.PINECONE_INDEX)
+        },
+        "system_info": {
+            "python_version": sys.version,
+            "working_directory": os.getcwd(),
+            "cache_directory": "✅ Exists" if os.path.exists("cache") else "❌ Missing",
+            "tmp_cache": "✅ Exists" if os.path.exists("/tmp/cache") else "❌ Missing",
+            "files_check": {
+                "performance_fix_hybrid_search.py": os.path.exists("performance_fix_hybrid_search.py"),
+                "semantic_namespace_mapper.py": os.path.exists("semantic_namespace_mapper.py"),
+                "config.py": os.path.exists("config.py")
+            }
+        },
+        "timestamp": time.time()
+    }
+    
+    return jsonify(debug_data)
+
+@app.route('/api/search-basic', methods=['POST'])
+def search_basic():
+    """Basic search endpoint that works without full initialization - for debugging."""
+    try:
+        data = request.json
+        query = data.get('message', '').strip()
+        
+        if not query:
+            return jsonify({'error': 'No query provided'}), 400
+            
+        # Return a basic response explaining the current status
+        response = {
+            'query': query,
+            'response': f"I received your query: '{query}'. However, the AI services are still initializing. This is a basic response to confirm the server is running.",
+            'status': 'basic_mode',
+            'initialization_status': {
+                'searcher': fast_searcher is not None,
+                'groq': groq_client is not None
+            },
+            'message': 'Please check /ready or /debug endpoints for detailed status information.',
+            'timestamp': time.time()
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Basic search error: {str(e)}',
+            'status': 'error'
+        }), 500
 
 if __name__ == '__main__':
     import os
@@ -504,15 +606,118 @@ if __name__ == '__main__':
     
     # Start initialization in background AFTER Flask starts
     def background_init():
+        global fast_searcher, groq_client
         try:
             # Give Flask time to start and respond to health checks
             import time
             time.sleep(2)
             print("🔄 Starting background initialization...")
-            initialize_services()
-            print("✅ Background initialization complete!")
+            
+            # Try initialization with detailed error reporting
+            print("📋 Step 1: Testing Groq client...")
+            try:
+                groq_client = groq.Groq(api_key=config.GROQ_API_KEY)
+                # Test the connection
+                test_completion = groq_client.chat.completions.create(
+                    model="llama3-70b-8192",
+                    messages=[{"role": "user", "content": "test"}],
+                    max_tokens=10
+                )
+                print("✅ Groq client initialized and tested successfully")
+            except Exception as groq_error:
+                print(f"❌ Groq initialization failed: {groq_error}")
+                groq_client = None
+                
+            print("📋 Step 2: Testing Hybrid Search initialization...")
+            try:
+                # Check and create cache directory with fallback
+                cache_dir = "cache"
+                fallback_cache = "/tmp/cache"
+                
+                try:
+                    import os
+                    if not os.path.exists(cache_dir):
+                        os.makedirs(cache_dir, exist_ok=True)
+                    # Test write permissions
+                    test_file = os.path.join(cache_dir, "test_write.tmp")
+                    with open(test_file, 'w') as f:
+                        f.write("test")
+                    os.remove(test_file)
+                    print(f"✅ Cache directory ready: {cache_dir}")
+                except Exception as e:
+                    print(f"⚠️ Cache directory issue: {e}, using fallback: {fallback_cache}")
+                    cache_dir = fallback_cache
+                    os.makedirs(cache_dir, exist_ok=True)
+                
+                # Initialize fast searcher with detailed error handling
+                print("⚡ Loading performance-optimized hybrid search...")
+                
+                # Get Jina API key from config
+                jina_api_key = getattr(config, 'JINA_API_KEY', None) or os.getenv('JINA_API_KEY')
+                print(f"🔑 Using Jina API key: {'✅' if jina_api_key else '❌'}")
+                print(f"🔑 Using Pinecone API key: {'✅' if config.PINECONE_API_KEY else '❌'}")
+                print(f"🔑 Using Pinecone index: {config.PINECONE_INDEX}")
+                
+                fast_searcher = PerformanceOptimizedHybridSearch(
+                    pinecone_api_key=config.PINECONE_API_KEY,
+                    pinecone_index=config.PINECONE_INDEX,
+                    jina_api_key=jina_api_key,
+                    alpha=config.DEFAULT_ALPHA,
+                    fusion_method=config.DEFAULT_FUSION_METHOD,
+                    cache_dir=cache_dir
+                )
+                print("✅ Hybrid search initialized successfully")
+                
+            except Exception as search_error:
+                print(f"❌ Hybrid search initialization failed: {search_error}")
+                import traceback
+                traceback.print_exc()
+                fast_searcher = None
+            
+            # Final status check
+            if fast_searcher and groq_client:
+                print("✅ Background initialization complete - All services ready!")
+            else:
+                print("⚠️ Background initialization incomplete:")
+                print(f"  - Hybrid Search: {'✅' if fast_searcher else '❌'}")
+                print(f"  - Groq Client: {'✅' if groq_client else '❌'}")
+                
+                # Try a simplified retry after 30 seconds
+                print("🔄 Scheduling retry in 30 seconds...")
+                time.sleep(30)
+                
+                if not groq_client:
+                    try:
+                        print("🔄 Retrying Groq initialization...")
+                        groq_client = groq.Groq(api_key=config.GROQ_API_KEY)
+                        print("✅ Groq retry successful")
+                    except:
+                        print("❌ Groq retry failed")
+                
+                if not fast_searcher:
+                    try:
+                        print("🔄 Retrying hybrid search initialization...")
+                        fast_searcher = PerformanceOptimizedHybridSearch(
+                            pinecone_api_key=config.PINECONE_API_KEY,
+                            pinecone_index=config.PINECONE_INDEX,
+                            jina_api_key=jina_api_key,
+                            alpha=config.DEFAULT_ALPHA,
+                            fusion_method=config.DEFAULT_FUSION_METHOD,
+                            cache_dir=cache_dir
+                        )
+                        print("✅ Hybrid search retry successful")
+                    except Exception as retry_error:
+                        print(f"❌ Hybrid search retry failed: {retry_error}")
+                
+                # Final status after retry
+                if fast_searcher and groq_client:
+                    print("🎉 Retry successful - All services now ready!")
+                else:
+                    print("❌ Background initialization failed even after retry")
+                    print("Server will continue running in degraded mode")
+                
         except Exception as e:
-            print(f"⚠️ Background initialization failed: {e}")
+            print(f"❌ Critical background initialization error: {e}")
             import traceback
             traceback.print_exc()
     

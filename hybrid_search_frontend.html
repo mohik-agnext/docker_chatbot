@@ -1323,9 +1323,45 @@
                     
                     if (!response.ok) {
                         if (response.status === 503) {
-                            // Server is still initializing
+                            // Server is still initializing - try basic search as fallback
+                            try {
+                                console.log('🔄 Trying basic search fallback...');
+                                const basicResponse = await fetch('/api/search-basic', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ message: query })
+                                });
+                                
+                                if (basicResponse.ok) {
+                                    const basicData = await basicResponse.json();
+                                    console.log('✅ Basic search worked:', basicData);
+                                    
+                                    // Display basic response with initialization message
+                                    const basicDiv = document.createElement('div');
+                                    basicDiv.className = 'assistant-message';
+                                    basicDiv.innerHTML = `
+                                        <div class="initialization-notice">
+                                            🔄 <strong>System Initializing</strong> - Showing basic response<br>
+                                            <small>Full AI features will be available shortly. <a href="/debug" target="_blank">View Status</a></small>
+                                        </div>
+                                        <div class="basic-response">${basicData.response}</div>
+                                        <div class="initialization-status">
+                                            <small>Search Engine: ${basicData.initialization_status?.searcher ? '✅' : '❌'} | 
+                                            AI Model: ${basicData.initialization_status?.groq ? '✅' : '❌'}</small>
+                                        </div>
+                                    `;
+                                    addMessage(basicDiv);
+                                    return;
+                                }
+                            } catch (basicError) {
+                                console.log('❌ Basic search also failed:', basicError);
+                            }
+                            
+                            // If basic search also fails, show the original error
                             const errorData = await response.json();
-                            throw new Error(`🔄 System is still initializing AI services. Please wait ${errorData.retry_after || 10} seconds and try again.`);
+                            throw new Error(`🔄 System is still initializing AI services. Please wait ${errorData.retry_after || 10} seconds and try again. <a href="/debug" target="_blank">View Debug Info</a>`);
                         }
                         throw new Error(`Error: ${response.status}`);
                     }
@@ -1426,18 +1462,36 @@
                 const response = await fetch('/ready');
                 const data = await response.json();
                 
+                console.log('📊 System status check:', data);
+                
                 if (data.status === 'fully_ready') {
                     console.log('✅ System is fully ready!');
                     showSystemStatus('✅ System Ready - You can ask questions!', 'success');
                 } else if (data.status === 'initializing') {
                     console.log('🔄 System initializing...');
-                    showSystemStatus('🔄 AI services are still loading. Please wait...', 'warning');
+                    
+                    // Enhanced status message with more details
+                    let statusMessage = '🔄 AI services are still loading. Please wait...';
+                    
+                    // Add specific component status if available
+                    if (data.searcher_status) {
+                        statusMessage += `<br><small>Search: ${data.searcher_status}</small>`;
+                    }
+                    if (data.groq_status) {
+                        statusMessage += `<br><small>AI: ${data.groq_status}</small>`;
+                    }
+                    
+                    // Add debug link
+                    statusMessage += '<br><small><a href="/debug" target="_blank" style="color: white; text-decoration: underline;">View Debug Info</a></small>';
+                    
+                    showSystemStatus(statusMessage, 'warning');
+                    
                     // Check again in 10 seconds
                     setTimeout(checkSystemStatus, 10000);
                 }
             } catch (error) {
-                console.log('⚠️ Could not check system status');
-                showSystemStatus('⚠️ Checking system status...', 'info');
+                console.log('⚠️ Could not check system status:', error);
+                showSystemStatus('⚠️ Checking system status... <br><small><a href="/debug" target="_blank" style="color: white; text-decoration: underline;">Debug Info</a></small>', 'info');
                 // Retry in 5 seconds
                 setTimeout(checkSystemStatus, 5000);
             }
