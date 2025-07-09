@@ -93,15 +93,32 @@ class PerformanceOptimizedHybridSearch:
         print(f"✅ Initialization complete - Ready for production!")
         
     def _initialize_pinecone_fast(self, api_key: str, index_name: str):
-        """Fast Pinecone initialization with minimal checks."""
+        """Fast Pinecone initialization with minimal checks and timeout."""
         try:
-            self.pc = Pinecone(api_key=api_key)
-            self.index = self.pc.Index(index_name)
+            print("🔗 Connecting to Pinecone...")
             
-            # Quick namespace check - only get count, not full details
-            stats = self.index.describe_index_stats()
-            self.namespaces = list(stats.namespaces.keys())
-            print(f"🔗 Connected to Pinecone index '{index_name}' with {len(self.namespaces)} namespaces")
+            # Add timeout for Pinecone connection
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Pinecone connection timed out")
+            
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(20)  # 20 second timeout for Pinecone connection
+            
+            try:
+                self.pc = Pinecone(api_key=api_key)
+                self.index = self.pc.Index(index_name)
+                
+                # Quick namespace check - only get count, not full details
+                stats = self.index.describe_index_stats()
+                self.namespaces = list(stats.namespaces.keys())
+                signal.alarm(0)  # Cancel alarm
+                print(f"✅ Connected to Pinecone index '{index_name}' with {len(self.namespaces)} namespaces")
+                
+            except TimeoutError:
+                signal.alarm(0)
+                raise Exception("Pinecone connection timed out after 20 seconds")
             
         except Exception as e:
             print(f"❌ Pinecone initialization failed: {e}")
@@ -152,11 +169,35 @@ class PerformanceOptimizedHybridSearch:
                 return
                 
             except Exception as e:
-                print(f"⚠️  Cache loading failed: {e}, rebuilding...")
+                print(f"⚠️ Cache loading failed: {e}, rebuilding...")
         
         # If cache doesn't exist or failed to load, build and cache
         print("🔨 Building BM25 index (this may take a moment, but will be cached)...")
-        self._build_and_cache_bm25()
+        
+        # Add timeout for BM25 building - if it takes too long, skip it
+        import signal
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutError("BM25 building timed out")
+        
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(30)  # 30 second timeout for BM25 building
+        
+        try:
+            self._build_and_cache_bm25()
+            signal.alarm(0)  # Cancel alarm
+        except TimeoutError:
+            signal.alarm(0)
+            print("⚠️ BM25 building timed out - running without BM25 (vector search only)")
+            self.bm25_index = None
+            self.bm25_documents = []
+            self.doc_ids = []
+        except Exception as e:
+            signal.alarm(0)
+            print(f"⚠️ BM25 building failed: {e} - running without BM25 (vector search only)")
+            self.bm25_index = None
+            self.bm25_documents = []
+            self.doc_ids = []
     
     def _build_and_cache_bm25(self):
         """Build BM25 index efficiently and cache it."""
@@ -372,43 +413,47 @@ class PerformanceOptimizedHybridSearch:
         return all_results[:top_k]
     
     def _fast_bm25_search(self, query: str, top_k: int):
-        """Fast BM25 search with cached index."""
-        if not self.bm25_index:
+        """Fast BM25 search with fallback if BM25 is not available."""
+        if not self.bm25_index or not self.bm25_documents:
+            print("⚠️ BM25 not available - using vector search only")
             return []
         
         try:
-            # Simple tokenization for speed
-            query_tokens = [
-                token.strip('.,!?;:"()[]{}').lower()
-                for token in query.split()
-                if len(token) > 2 and not token.isdigit()
-            ]
-            
-            if not query_tokens:
-                return []
+            # Tokenize query efficiently
+            if HAS_NLTK:
+                query_tokens = [token.lower() for token in word_tokenize(query) if token.isalnum()]
+                # Remove stopwords if available
+                try:
+                    stop_words = set(stopwords.words('english'))
+                    query_tokens = [token for token in query_tokens if token not in stop_words]
+                except:
+                    pass  # Continue without stopword removal if not available
+            else:
+                # Simple tokenization fallback
+                query_tokens = query.lower().split()
             
             # Get BM25 scores
-            scores = self.bm25_index.get_scores(query_tokens)
+            bm25_scores = self.bm25_index.get_scores(query_tokens)
             
             # Get top results
-            top_indices = np.argsort(scores)[::-1][:top_k]
+            top_indices = np.argsort(bm25_scores)[::-1][:top_k]
             
             results = []
             for idx in top_indices:
-                if idx < len(self.bm25_documents) and scores[idx] > 0:
+                if bm25_scores[idx] > 0:  # Only include relevant results
                     doc_id, namespace = self.doc_ids[idx]
                     results.append({
                         "id": doc_id,
-                        "score": float(scores[idx]),
-                        "metadata": {"text": self.bm25_documents[idx]},
+                        "score": float(bm25_scores[idx]),
+                        "metadata": {"content": self.bm25_documents[idx]},
                         "namespace": namespace,
                         "source": "bm25"
                     })
             
             return results
-        
+            
         except Exception as e:
-            print(f"⚠️  BM25 search error: {e}")
+            print(f"⚠️ BM25 search failed: {e} - continuing without BM25")
             return []
     
     def _fast_fusion(self, vector_results: List[dict], bm25_results: List[dict], top_k: int):

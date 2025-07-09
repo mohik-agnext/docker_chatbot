@@ -607,96 +607,85 @@ if __name__ == '__main__':
     # Start initialization in background AFTER Flask starts
     def background_init():
         global fast_searcher, groq_client
-        try:
-            # Give Flask time to start and respond to health checks
-            import time
-            time.sleep(2)
-            print("🔄 Starting background initialization...")
-            
-            # Try initialization with detailed error reporting
-            print("📋 Step 1: Testing Groq client...")
+        max_retries = 3
+        
+        for attempt in range(max_retries):
             try:
-                groq_client = groq.Groq(api_key=config.GROQ_API_KEY)
-                # Test the connection
-                test_completion = groq_client.chat.completions.create(
-                    model="llama3-70b-8192",
-                    messages=[{"role": "user", "content": "test"}],
-                    max_tokens=10
-                )
-                print("✅ Groq client initialized and tested successfully")
-            except Exception as groq_error:
-                print(f"❌ Groq initialization failed: {groq_error}")
-                groq_client = None
+                # Give Flask time to start and respond to health checks
+                import time
+                time.sleep(2)
+                print(f"🔄 Starting background initialization (attempt {attempt + 1}/{max_retries})...")
                 
-            print("📋 Step 2: Testing Hybrid Search initialization...")
-            try:
-                # Check and create cache directory with fallback
-                cache_dir = "cache"
-                fallback_cache = "/tmp/cache"
-                
+                # Try initialization with detailed error reporting and timeouts
+                print("📋 Step 1: Testing Groq client...")
                 try:
-                    import os
-                    if not os.path.exists(cache_dir):
+                    groq_client = groq.Groq(api_key=config.GROQ_API_KEY)
+                    # Test the connection with short timeout
+                    import signal
+                    
+                    def timeout_handler(signum, frame):
+                        raise TimeoutError("Groq test timed out")
+                    
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(15)  # 15 second timeout
+                    
+                    try:
+                        test_completion = groq_client.chat.completions.create(
+                            model="llama3-70b-8192",
+                            messages=[{"role": "user", "content": "test"}],
+                            max_tokens=5,
+                            timeout=10
+                        )
+                        signal.alarm(0)  # Cancel alarm
+                        print("✅ Groq client initialized and tested successfully")
+                    except TimeoutError:
+                        signal.alarm(0)
+                        raise Exception("Groq API test timed out after 15 seconds")
+                    
+                except Exception as groq_error:
+                    print(f"❌ Groq initialization failed: {groq_error}")
+                    groq_client = None
+                    if attempt == max_retries - 1:  # Last attempt
+                        print("🔄 Continuing without Groq (will use basic responses)")
+                    
+                print("📋 Step 2: Testing Hybrid Search initialization...")
+                try:
+                    # Check and create cache directory with fallback
+                    cache_dir = "cache"
+                    fallback_cache = "/tmp/cache"
+                    
+                    try:
+                        import os
+                        if not os.path.exists(cache_dir):
+                            os.makedirs(cache_dir, exist_ok=True)
+                        # Test write permissions
+                        test_file = os.path.join(cache_dir, "test_write.tmp")
+                        with open(test_file, 'w') as f:
+                            f.write("test")
+                        os.remove(test_file)
+                        print(f"✅ Cache directory ready: {cache_dir}")
+                    except Exception as e:
+                        print(f"⚠️ Cache directory issue: {e}, using fallback: {fallback_cache}")
+                        cache_dir = fallback_cache
                         os.makedirs(cache_dir, exist_ok=True)
-                    # Test write permissions
-                    test_file = os.path.join(cache_dir, "test_write.tmp")
-                    with open(test_file, 'w') as f:
-                        f.write("test")
-                    os.remove(test_file)
-                    print(f"✅ Cache directory ready: {cache_dir}")
-                except Exception as e:
-                    print(f"⚠️ Cache directory issue: {e}, using fallback: {fallback_cache}")
-                    cache_dir = fallback_cache
-                    os.makedirs(cache_dir, exist_ok=True)
-                
-                # Initialize fast searcher with detailed error handling
-                print("⚡ Loading performance-optimized hybrid search...")
-                
-                # Get Jina API key from config
-                jina_api_key = getattr(config, 'JINA_API_KEY', None) or os.getenv('JINA_API_KEY')
-                print(f"🔑 Using Jina API key: {'✅' if jina_api_key else '❌'}")
-                print(f"🔑 Using Pinecone API key: {'✅' if config.PINECONE_API_KEY else '❌'}")
-                print(f"🔑 Using Pinecone index: {config.PINECONE_INDEX}")
-                
-                fast_searcher = PerformanceOptimizedHybridSearch(
-                    pinecone_api_key=config.PINECONE_API_KEY,
-                    pinecone_index=config.PINECONE_INDEX,
-                    jina_api_key=jina_api_key,
-                    alpha=config.DEFAULT_ALPHA,
-                    fusion_method=config.DEFAULT_FUSION_METHOD,
-                    cache_dir=cache_dir
-                )
-                print("✅ Hybrid search initialized successfully")
-                
-            except Exception as search_error:
-                print(f"❌ Hybrid search initialization failed: {search_error}")
-                import traceback
-                traceback.print_exc()
-                fast_searcher = None
-            
-            # Final status check
-            if fast_searcher and groq_client:
-                print("✅ Background initialization complete - All services ready!")
-            else:
-                print("⚠️ Background initialization incomplete:")
-                print(f"  - Hybrid Search: {'✅' if fast_searcher else '❌'}")
-                print(f"  - Groq Client: {'✅' if groq_client else '❌'}")
-                
-                # Try a simplified retry after 30 seconds
-                print("🔄 Scheduling retry in 30 seconds...")
-                time.sleep(30)
-                
-                if not groq_client:
+                    
+                    # Initialize fast searcher with detailed error handling and timeout
+                    print("⚡ Loading performance-optimized hybrid search...")
+                    
+                    # Get Jina API key from config
+                    jina_api_key = getattr(config, 'JINA_API_KEY', None) or os.getenv('JINA_API_KEY')
+                    print(f"🔑 Using Jina API key: {'✅' if jina_api_key else '❌'}")
+                    print(f"🔑 Using Pinecone API key: {'✅' if config.PINECONE_API_KEY else '❌'}")
+                    print(f"🔑 Using Pinecone index: {config.PINECONE_INDEX}")
+                    
+                    # Set timeout for hybrid search initialization
+                    def timeout_handler_search(signum, frame):
+                        raise TimeoutError("Hybrid search initialization timed out")
+                    
+                    signal.signal(signal.SIGALRM, timeout_handler_search)
+                    signal.alarm(60)  # 60 second timeout for hybrid search
+                    
                     try:
-                        print("🔄 Retrying Groq initialization...")
-                        groq_client = groq.Groq(api_key=config.GROQ_API_KEY)
-                        print("✅ Groq retry successful")
-                    except:
-                        print("❌ Groq retry failed")
-                
-                if not fast_searcher:
-                    try:
-                        print("🔄 Retrying hybrid search initialization...")
                         fast_searcher = PerformanceOptimizedHybridSearch(
                             pinecone_api_key=config.PINECONE_API_KEY,
                             pinecone_index=config.PINECONE_INDEX,
@@ -705,21 +694,53 @@ if __name__ == '__main__':
                             fusion_method=config.DEFAULT_FUSION_METHOD,
                             cache_dir=cache_dir
                         )
-                        print("✅ Hybrid search retry successful")
-                    except Exception as retry_error:
-                        print(f"❌ Hybrid search retry failed: {retry_error}")
+                        signal.alarm(0)  # Cancel alarm
+                        print("✅ Hybrid search initialized successfully")
+                    except TimeoutError:
+                        signal.alarm(0)
+                        raise Exception("Hybrid search initialization timed out after 60 seconds")
+                    
+                except Exception as search_error:
+                    print(f"❌ Hybrid search initialization failed: {search_error}")
+                    import traceback
+                    traceback.print_exc()
+                    fast_searcher = None
+                    if attempt == max_retries - 1:  # Last attempt
+                        print("🔄 Continuing without hybrid search (will use basic responses)")
                 
-                # Final status after retry
-                if fast_searcher and groq_client:
-                    print("🎉 Retry successful - All services now ready!")
+                # Check if we have at least one working component
+                if fast_searcher or groq_client:
+                    print("✅ Background initialization successful - At least one service ready!")
+                    break
                 else:
-                    print("❌ Background initialization failed even after retry")
-                    print("Server will continue running in degraded mode")
-                
-        except Exception as e:
-            print(f"❌ Critical background initialization error: {e}")
-            import traceback
-            traceback.print_exc()
+                    print(f"⚠️ Background initialization attempt {attempt + 1} failed - no services ready")
+                    if attempt < max_retries - 1:
+                        print(f"🔄 Retrying in 10 seconds...")
+                        time.sleep(10)
+                    
+            except Exception as e:
+                print(f"❌ Critical background initialization error (attempt {attempt + 1}): {e}")
+                import traceback
+                traceback.print_exc()
+                if attempt < max_retries - 1:
+                    print(f"🔄 Retrying in 10 seconds...")
+                    time.sleep(10)
+        
+        # Final status report
+        print("\n" + "="*50)
+        print("📊 FINAL INITIALIZATION STATUS")
+        print("="*50)
+        print(f"🔍 Hybrid Search: {'✅ Ready' if fast_searcher else '❌ Failed'}")
+        print(f"🤖 Groq Client: {'✅ Ready' if groq_client else '❌ Failed'}")
+        
+        if fast_searcher and groq_client:
+            print("🎉 All services ready - Full functionality available!")
+        elif fast_searcher or groq_client:
+            print("⚠️ Partial functionality - Some features available")
+        else:
+            print("❌ No AI services available - Running in basic mode only")
+            print("Users will get basic responses explaining the situation")
+        print("="*50)
     
     # Start initialization in background
     init_thread = threading.Thread(target=background_init)
