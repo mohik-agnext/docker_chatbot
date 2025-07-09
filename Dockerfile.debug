@@ -1,0 +1,29 @@
+# DEBUG VERSION - Minimal server to diagnose 502 errors
+FROM python:3.11-slim
+
+# Install minimal dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install only Flask for debugging
+RUN pip install flask gunicorn
+
+# Copy debug files
+COPY minimal_server.py .
+COPY quick_debug.py .
+
+# Create user
+RUN useradd -m -u 1000 renderuser && \
+    chown -R renderuser:renderuser /app
+
+USER renderuser
+
+# Environment
+ENV FLASK_ENV=production \
+    PYTHONUNBUFFERED=1
+
+# Use minimal server
+CMD python quick_debug.py || gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --timeout 60 minimal_server:app 

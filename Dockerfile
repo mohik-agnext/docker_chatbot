@@ -60,6 +60,8 @@ COPY --chown=renderuser:renderuser hybrid_search_frontend.html .
 COPY --chown=renderuser:renderuser index.html .
 COPY --chown=renderuser:renderuser render_env_check.py .
 COPY --chown=renderuser:renderuser debug_init.py .
+COPY --chown=renderuser:renderuser minimal_server.py .
+COPY --chown=renderuser:renderuser quick_debug.py .
 COPY --chown=renderuser:renderuser cache/ ./cache/
 
 # Create minimal cache structure
@@ -89,4 +91,9 @@ HEALTHCHECK --interval=45s --timeout=15s --start-period=120s --retries=3 \
 
 # Use gunicorn for production deployment (Render optimized)
 # Use PORT if set by Render, otherwise use 10000
-CMD python render_env_check.py && gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app 
+# Added fallback to minimal server if main server fails
+CMD python render_env_check.py && \
+    (timeout 30 python -c "import config, pinecone, groq, requests" && \
+     gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 2 --timeout 120 --access-logfile - --error-logfile - fast_hybrid_search_server:app) || \
+    (echo "⚠️ Main server failed, starting minimal debug server..." && \
+     gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --timeout 60 --access-logfile - --error-logfile - minimal_server:app) 
